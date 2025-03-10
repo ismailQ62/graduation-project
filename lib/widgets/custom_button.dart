@@ -8,10 +8,10 @@ class CustomButton extends StatelessWidget {
   final Color color;
 
   const CustomButton({
+    super.key,
     required this.text,
     required this.onPressed,
-    this.color = Colors.blue,
-    super.key,
+    this.color = const Color.fromRGBO(56, 75, 112, 1), //
   });
 
   @override
