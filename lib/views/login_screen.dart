@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
               CustomButton(
                 text: "Login",
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.home);
+                  Navigator.pushNamed(context, AppRoutes.map);
                 },
               ),
 
