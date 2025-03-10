@@ -16,6 +16,7 @@ class CustomTextField extends StatefulWidget {
   });
 
   @override
+  // ignore: library_private_types_in_public_api
   _CustomTextFieldState createState() => _CustomTextFieldState();
 }
 
@@ -37,8 +38,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               if (widget.isNumber &&
                   value.isNotEmpty &&
                   !RegExp(r'^\d+$').hasMatch(value)) {
-                _errorMessage =
-                    "Invalid format! Only numbers allowed."; // ✅ Show error message
+                _errorMessage = "Invalid format! Only numbers allowed.";
               } else {
                 _errorMessage = null; // ✅ Clear error message
               }
@@ -49,7 +49,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10.r),
             ),
-            errorText: _errorMessage, // ✅ Show error message in red if invalid
+            errorText: _errorMessage,
           ),
         ),
       ],
