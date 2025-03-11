@@ -25,18 +25,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // ✅ Prevents keyboard issues
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        // ✅ Prevents overflow
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.1,
-              ), // ✅ Adjusted spacing
+              SizedBox(height: MediaQuery.of(context).size.height * 0.1),
 
               Image.asset(
                 'assets/images/logo.png',
@@ -101,9 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               CustomButton(
                 text: "Sign up",
                 onPressed: () {
-                  Navigator.pop(
-                    context,
-                  ); // ✅ Navigates back to Login after Sign-Up
+                  Navigator.pop(context);
                 },
               ),
 
@@ -125,9 +120,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.05,
-              ), // ✅ Adjust spacing at the bottom
+              SizedBox(height: MediaQuery.of(context).size.height * 0.05),
             ],
           ),
         ),

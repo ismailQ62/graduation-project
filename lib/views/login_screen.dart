@@ -21,19 +21,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset:
-          false, // ✅ Prevents UI shifting when keyboard appears
+      resizeToAvoidBottomInset: false,
       backgroundColor: Colors.white,
       body: SingleChildScrollView(
-        // ✅ Prevents overflow errors
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.1,
-              ), // ✅ Adjusted top spacing
+              SizedBox(height: MediaQuery.of(context).size.height * 0.1),
 
               Image.asset(
                 'assets/images/logo.png',
@@ -69,9 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                  onPressed: () {
-                    // Forgot password logic
-                  },
+                  onPressed: () {},
                   child: Text(
                     "Forgot Password?",
                     style: TextStyle(color: Colors.red, fontSize: 14.sp),
@@ -84,7 +78,7 @@ class _LoginScreenState extends State<LoginScreen> {
               CustomButton(
                 text: "Login",
                 onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.map);
+                  Navigator.pushNamed(context, AppRoutes.home);
                 },
               ),
 
@@ -107,9 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.05,
-              ), // ✅ Adjust bottom spacing
+              SizedBox(height: MediaQuery.of(context).size.height * 0.05),
             ],
           ),
         ),

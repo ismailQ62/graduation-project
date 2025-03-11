@@ -15,7 +15,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // Navigate to the next screen after 3 seconds
+
     Future.delayed(const Duration(seconds: 7), () {
       // ignore: use_build_context_synchronously
       Navigator.pushReplacementNamed(context, AppRoutes.login);
@@ -32,8 +32,8 @@ class _SplashScreenState extends State<SplashScreen> {
           children: [
             Image.asset(
               'assets/images/logo.png',
-              width: 250.w, // Responsive width
-              height: 250.h, // Responsive height
+              width: 250.w,
+              height: 250.h,
               fit: BoxFit.contain,
             ),
             SizedBox(height: 20.h),

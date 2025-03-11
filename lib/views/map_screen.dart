@@ -3,34 +3,29 @@ import 'package:flutter_map/flutter_map.dart';
 //import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:latlong2/latlong.dart';
 
-class MapScreen extends StatefulWidget{
+class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
   @override
   State<MapScreen> createState() => _MapScreenState();
-
 }
-class _MapScreenState extends State<MapScreen>{
+
+class _MapScreenState extends State<MapScreen> {
   //final MapController _mapController = MapController();
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar:AppBar(
-        title: Text(
-          'Map'
-        ),
-      ),
-      body: content(),
-    );
+    return Scaffold(appBar: AppBar(title: Text('Map')), body: content());
   }
-  Widget content(){
+
+  Widget content() {
     return FlutterMap(
       options: MapOptions(
         initialCenter: LatLng(32.55828, 35.87560),
         initialZoom: 15,
         minZoom: 0,
         maxZoom: 100,
-        interactionOptions: 
-        const InteractionOptions(flags: ~InteractiveFlag.doubleTapZoom),
+        interactionOptions: const InteractionOptions(
+          flags: ~InteractiveFlag.doubleTapZoom,
+        ),
       ),
       children: [
         openStreetMapTileLater,
@@ -47,9 +42,10 @@ class _MapScreenState extends State<MapScreen>{
           ),
         )*/
       ],
-      );
+    );
   }
 }
+
 TileLayer get openStreetMapTileLater => TileLayer(
   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   userAgentPackageName: 'dev.fleatflet.flutter_map.example',
