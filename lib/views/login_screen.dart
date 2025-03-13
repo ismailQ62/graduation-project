@@ -13,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _nationalIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   // ignore: unused_field
   final bool _obscurePassword = true;
@@ -50,8 +50,9 @@ class _LoginScreenState extends State<LoginScreen> {
               SizedBox(height: 30.h),
 
               CustomTextField(
-                label: "Username",
-                controller: _usernameController,
+                label: "National ID",
+
+                controller: _nationalIdController,
               ),
               SizedBox(height: 15.h),
 
