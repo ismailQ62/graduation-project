@@ -93,7 +93,12 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(icon: Icon(Icons.home, size: 28.sp), onPressed: () {}),
+            IconButton(
+              icon: Icon(Icons.home, size: 28.sp),
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.verification);
+              },
+            ),
             IconButton(
               icon: Icon(Icons.chat, size: 28.sp),
               onPressed: () {

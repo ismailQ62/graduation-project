@@ -42,6 +42,7 @@ dependencies:
   web_socket_channel: ^3.0.2
   flutter_map_mbtiles: ^1.0.4
   flutter_launcher_icons: ^0.14.3
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -58,3 +59,4 @@ flutter:
 
   assets:
     - assets/images/logo.png
+    - assets/images/verification_icon.png

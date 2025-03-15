@@ -157,7 +157,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     TextButton(
                       onPressed:
-                          () => Navigator.pushNamed(context, AppRoutes.login),
+                          () =>
+                              Navigator.pushNamed(context, AppRoutes.channels),
                       child: Text(
                         "Login",
                         style: TextStyle(color: Colors.blue, fontSize: 14.sp),
