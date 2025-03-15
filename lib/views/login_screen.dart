@@ -39,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
               SizedBox(height: 20.h),
               Text(
-                "Welcome",
+                "Welcome main",
                 style: TextStyle(fontSize: 28.sp, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 5.h),
