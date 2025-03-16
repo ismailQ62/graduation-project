@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 7), () {
+    Future.delayed(const Duration(seconds: 4), () {
       // ignore: use_build_context_synchronously
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     });

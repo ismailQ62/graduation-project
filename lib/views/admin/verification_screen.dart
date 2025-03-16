@@ -34,7 +34,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Verification Icon
             Image.asset(
               'assets/images/verification_icon.png',
               width: 100.w,
@@ -43,7 +42,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
             SizedBox(height: 20.h),
 
-            // Title
             Text(
               "Verification",
               style: TextStyle(

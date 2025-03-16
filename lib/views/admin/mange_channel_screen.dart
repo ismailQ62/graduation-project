@@ -32,10 +32,7 @@ class ManageChannelsView extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.add,
-              color: Colors.black,
-            ), // Changed to 'Add' instead of 'Edit'
+            icon: const Icon(Icons.add, color: Colors.black),
             onPressed: () => _showAddChannelDialog(context),
           ),
         ],
