@@ -16,10 +16,16 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    Future.delayed(const Duration(seconds: 4), () {
-      // ignore: use_build_context_synchronously
-      Navigator.pushReplacementNamed(context, AppRoutes.login);
-    });
+    const String manualRoute = String.fromEnvironment(
+      'ROUTE',
+      defaultValue: "",
+    );
+
+    if (manualRoute.isEmpty) {
+      Future.delayed(const Duration(seconds: 3), () {
+        Navigator.pushReplacementNamed(context, AppRoutes.login);
+      });
+    }
   }
 
   @override
