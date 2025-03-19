@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:lorescue/services/esp32_service.dart';
+import 'package:lorescue/services/esp32_http_service.dart';
+
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -9,41 +10,31 @@ class ChatScreen extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final ESP32WebSocketService _webSocketService = ESP32WebSocketService();
+  final ESP32HttpService _httpService = ESP32HttpService();
   final TextEditingController _messageController = TextEditingController();
   List<String> _messages = [];
 
-  @override
-  void initState() {
-    super.initState();
-    _webSocketService.connect();
-    _webSocketService.onMessageReceived = (message) {
-      setState(() {
-        _messages.add("chat $message");
-      });
-    };
-  }
-
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_messageController.text.isNotEmpty) {
+      String message = _messageController.text;
       setState(() {
-        _messages.add(" ${_messageController.text}");
+        _messages.add("You: $message");
       });
-      _webSocketService.sendMessage(_messageController.text);
+
+      bool success = await _httpService.sendMessage(message);
+      if (!success) {
+        setState(() {
+          _messages.add("⚠️ Failed to send message.");
+        });
+      }
       _messageController.clear();
     }
   }
 
   @override
-  void dispose() {
-    _webSocketService.disconnect();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text(" Chat")),
+      appBar: AppBar(title: const Text("Chat")),
       body: Column(
         children: [
           Expanded(
