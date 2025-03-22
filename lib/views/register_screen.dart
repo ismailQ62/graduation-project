@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/models/user_model.dart';
+import 'package:lorescue/services/database/user_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -13,19 +15,19 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
+  final UserService _userService = UserService();
+
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _nationalIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  String? _selectedRole;
 
+  String? _selectedRole;
   final List<String> roles = ["Individual", "Admin", "Responder"];
 
-  void _register() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  void _register() async {
+    if (!_formKey.currentState!.validate()) return;
 
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -37,7 +39,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    Navigator.pop(context);
+    bool exists = await _userService.doesNationalIdExist(
+      _nationalIdController.text,
+    );
+    if (exists) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("National ID already exists"),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    User newUser = User(
+      name: _usernameController.text,
+      nationalId: _nationalIdController.text,
+      password: _passwordController.text,
+      role: _selectedRole!,
+    );
+
+    await _userService.registerUser(newUser);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Registration successful!"),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 1), () {
+      Navigator.pushNamed(context, AppRoutes.login);
+    });
   }
 
   @override
@@ -96,8 +129,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null || value.isEmpty) {
                       return "National ID is required";
                     }
-                    if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
-                      return "Invalid National ID format";
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                      return "National ID must be exactly 10 digits";
                     }
                     return null;
                   },
@@ -132,17 +165,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   isPassword: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "Password is required";
-                    }
-                    if (value.length < 6) {
-                      return "Password must be at least 6 characters";
-                    }
-                    return null;
+                    validator:
+                    (value) {
+                      if (value == null || value.isEmpty) {
+                        return "Password is required";
+                      }
+                      if (value.length < 8) {
+                        return "Password must be at least 8 characters";
+                      }
+                      if (!RegExp(r'(?=.*[a-z])').hasMatch(value)) {
+                        return "Password must contain a lowercase letter";
+                      }
+                      if (!RegExp(r'(?=.*[A-Z])').hasMatch(value)) {
+                        return "Password must contain an uppercase letter";
+                      }
+                      if (!RegExp(r'(?=.*[!@#\$&*~%^])').hasMatch(value)) {
+                        return "Password must include a special character";
+                      }
+                      return null;
+                    };
                   },
                 ),
                 SizedBox(height: 15.h),
 
+                CustomTextField(
+                  label: "Confirm Password",
+                  controller: _confirmPasswordController,
+                  isPassword: true,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return "Please confirm your password";
+                    }
+                    return null;
+                  },
+                ),
                 SizedBox(height: 20.h),
 
                 CustomButton(text: "Sign up", onPressed: _register),
@@ -157,8 +213,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     TextButton(
                       onPressed:
-                          () =>
-                              Navigator.pushNamed(context, AppRoutes.channels),
+                          () => Navigator.pushNamed(context, AppRoutes.login),
                       child: Text(
                         "Login",
                         style: TextStyle(color: Colors.blue, fontSize: 14.sp),

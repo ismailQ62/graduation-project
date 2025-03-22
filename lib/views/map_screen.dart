@@ -153,6 +153,7 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
   }
+
   // Method to display an error
   void errorMessage(String message) {
     ScaffoldMessenger.of(
@@ -294,6 +295,7 @@ Container _searchField() {
     ),
   );
 }
+
 TileLayer get openStreetMapTileLater => TileLayer(
   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
   userAgentPackageName: 'dev.fleatflet.flutter_map.example',

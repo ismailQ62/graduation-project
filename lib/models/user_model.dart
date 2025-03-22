@@ -1,45 +1,70 @@
 class User {
-  final String userID;
-  String name;
-  String password;
-  String role;
-  //Coordinates location;
-  String contactInfo;
+  int? _id;
+  String _name;
+  String _nationalId;
+  String _password;
+  String _role;
 
   User({
-    required this.userID,
-    required this.name,
-    required this.password,
-    required this.role,
-    // required this.location,
-    required this.contactInfo,
-  });
+    int? id,
+    required String name,
+    required String nationalId,
+    required String password,
+    required String role,
+  }) : _id = id,
+       _name = name,
+       _nationalId = nationalId,
+       _password = password,
+       _role = role;
 
-  // Getters
-  String getUserID() => userID;
-  String getUserName() => name;
-  String getUserPassword() => password;
-  String getUserRole() => role;
-  // Coordinates getUserLocation() => location;
-  String getUserContactInfo() => contactInfo;
+  int? get id => _id;
+  String get name => _name;
+  String get nationalId => _nationalId;
+  String get password => _password;
+  String get role => _role;
 
-  // Setters
-  void setUserName(String newName) => name = newName;
-  void setUserPassword(String newPassword) => password = newPassword;
-  void setUserRole(String newRole) => role = newRole;
-  //void setUserLocation(Coordinates newLocation) => location = newLocation;
-  void setUserContactInfo(String newContactInfo) =>
-      contactInfo = newContactInfo;
+  set name(String value) {
+    if (value.isEmpty || value.length < 3) {
+      throw ArgumentError("Name must be at least 3 characters long");
+    }
+    _name = value;
+  }
 
-  // Convert User to Map (for Database sqlite)
+  set nationalId(String value) {
+    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+      throw ArgumentError("National ID must be exactly 10 numeric digits");
+    }
+    _nationalId = value;
+  }
+
+  set password(String value) {
+    if (value.length < 8) {
+      throw ArgumentError("Password must be at least 8 characters");
+    }
+    if (!RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$&*~%^]).+$',
+    ).hasMatch(value)) {
+      throw ArgumentError(
+        "Password must include uppercase, lowercase, a digit, and a special character",
+      );
+    }
+    _password = value;
+  }
+
+  set role(String value) {
+    if (!['Individual', 'Admin', 'Responder'].contains(value)) {
+      throw ArgumentError("Invalid role selected");
+    }
+    _role = value;
+  }
+
   Map<String, dynamic> toMap() {
     return {
-      'userID': userID,
-      'name': name,
-      'password': password,
-      'role': role,
-      //  'location': location.toMap(),
-      'contactInfo': contactInfo,
+      'id': _id,
+      'name': _name,
+      'nationalId': _nationalId,
+      'password': _password,
+      'role': _role,
     };
   }
 }
