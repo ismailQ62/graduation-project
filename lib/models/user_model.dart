@@ -67,4 +67,6 @@ class User {
       'role': _role,
     };
   }
+
+  static fromMap(Map<String, Object?> map) {}
 }

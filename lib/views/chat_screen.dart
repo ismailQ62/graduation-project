@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/services/esp32_http_service.dart';
 
-
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
 

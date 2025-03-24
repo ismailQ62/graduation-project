@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/views/admin/mange_channel_screen.dart';
+import 'package:lorescue/views/admin/verification_screen.dart';
 import 'package:lorescue/views/splash_screen.dart';
 import 'package:lorescue/views/login_screen.dart';
 import 'package:lorescue/views/register_screen.dart';
@@ -42,6 +43,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ManageChannelsScreen());
       case channels:
         return MaterialPageRoute(builder: (_) => const ChannelsScreen());
+      case verification:
+        return MaterialPageRoute(builder: (_) => const VerificationScreen());
       default:
         return MaterialPageRoute(
           builder:

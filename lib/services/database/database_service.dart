@@ -16,7 +16,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users (
@@ -25,6 +25,17 @@ class DatabaseService {
             nationalId TEXT NOT NULL,
             password TEXT NOT NULL,
             role TEXT NOT NULL
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            senderId TEXT NOT NULL,
+            receiverId TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            isRead INTEGER NOT NULL DEFAULT 0
           )
         ''');
       },

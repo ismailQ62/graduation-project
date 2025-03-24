@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/database/user_service.dart';
-import 'package:lorescue/services/database/database_service.dart'; // 👈 Added for DB access
+import 'package:lorescue/services/database/database_service.dart';
 
 void main() {
   setUpAll(() {
@@ -12,7 +12,6 @@ void main() {
 
   final userService = UserService();
 
-  //  Clear users before each test to avoid conflicts
   setUp(() async {
     final db = await DatabaseService().database;
     await db.delete('users');
