@@ -5,7 +5,7 @@ class ChannelCubit extends Cubit<List<Channel>> {
   ChannelCubit() : super([]);
 
   void addChannel(String name, String description) {
-    final newChannel = Channel(name: name, description: description);
+    final newChannel = Channel(name: name); // description: description);
     emit([...state, newChannel]);
   }
 
@@ -13,7 +13,7 @@ class ChannelCubit extends Cubit<List<Channel>> {
     final updatedChannels = List<Channel>.from(state);
     updatedChannels[index] = Channel(
       name: newName,
-      description: newDescription,
+      //  description: newDescription,
     );
     emit(updatedChannels);
   }

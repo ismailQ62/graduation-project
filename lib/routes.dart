@@ -39,8 +39,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ChatScreen());
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
-      case manageChannel:
-        return MaterialPageRoute(builder: (_) => const ManageChannelsScreen());
+      /*   case manageChannel:
+        return MaterialPageRoute(builder: (_) => const ManageChannelsScreen()); */
       case channels:
         return MaterialPageRoute(builder: (_) => const ChannelsScreen());
       case verification:

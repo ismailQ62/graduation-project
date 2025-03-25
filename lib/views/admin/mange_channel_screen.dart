@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/* import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lorescue/cubit/channel_cubit.dart';
 import 'package:lorescue/models/channel_model.dart';
@@ -50,7 +50,7 @@ class ManageChannelsView extends StatelessWidget {
                       channel.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(channel.description),
+                   // subtitle: Text(channel.description),
                     leading: const CircleAvatar(child: Icon(Icons.group)),
                     trailing: IconButton(
                       icon: const Icon(Icons.edit, color: Colors.blue),
@@ -120,7 +120,7 @@ class ManageChannelsView extends StatelessWidget {
       text: channel.name,
     );
     final TextEditingController descriptionController = TextEditingController(
-      text: channel.description,
+     // text: channel.description,
     );
 
     showDialog(
@@ -174,3 +174,4 @@ class ManageChannelsView extends StatelessWidget {
     );
   }
 }
+ */

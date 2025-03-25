@@ -16,7 +16,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users (
@@ -35,7 +35,15 @@ class DatabaseService {
             receiverId TEXT NOT NULL,
             content TEXT NOT NULL,
             timestamp TEXT NOT NULL,
-            isRead INTEGER NOT NULL DEFAULT 0
+            isRead INTEGER NOT NULL DEFAULT 0,
+            channelId INTEGER NOT NULL
+          )
+        ''');
+
+        await db.execute('''
+          CREATE TABLE channels (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL
           )
         ''');
       },

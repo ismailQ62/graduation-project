@@ -10,6 +10,7 @@ class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
+  // ignore: library_private_types_in_public_api
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
@@ -43,6 +44,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _nationalIdController.text,
     );
     if (exists) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("National ID already exists"),
@@ -61,6 +63,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     await _userService.registerUser(newUser);
 
+    // ignore: use_build_context_synchronously
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text("Registration successful!"),
@@ -69,6 +72,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
 
     Future.delayed(const Duration(seconds: 1), () {
+      // ignore: use_build_context_synchronously
       Navigator.pushNamed(context, AppRoutes.login);
     });
   }
@@ -165,6 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   isPassword: true,
                   validator: (value) {
+                    // ignore: unused_label
                     validator:
                     (value) {
                       if (value == null || value.isEmpty) {

@@ -4,7 +4,7 @@ class Message {
   String _receiverId;
   String _content;
   String _timestamp;
-  /* bool _isRead; */
+  int _channelId;
 
   Message({
     int? id,
@@ -12,13 +12,13 @@ class Message {
     required String receiverId,
     required String content,
     required String timestamp,
-    /* bool isRead = false, */
+    required int channelId,
   }) : _id = id,
        _senderId = senderId,
        _receiverId = receiverId,
        _content = content,
-       _timestamp = timestamp
-  /* _isRead = isRead */ {
+       _timestamp = timestamp,
+       _channelId = channelId {
     if (senderId.isEmpty) {
       throw ArgumentError("Sender ID cannot be empty");
     }
@@ -30,13 +30,15 @@ class Message {
     }
   }
 
+  // Getters
   int? get id => _id;
   String get senderId => _senderId;
   String get receiverId => _receiverId;
   String get content => _content;
   String get timestamp => _timestamp;
-  /*  bool get isRead => _isRead; */
+  int get channelId => _channelId;
 
+  // Setters
   set content(String value) {
     if (value.isEmpty) {
       throw ArgumentError("Message content must not be empty");
@@ -44,10 +46,14 @@ class Message {
     _content = value;
   }
 
-  /* set isRead(bool value) {
-    _isRead = value;
-  } */
+  set channelId(int value) {
+    if (value <= 0) {
+      throw ArgumentError("Invalid channel ID");
+    }
+    _channelId = value;
+  }
 
+  // Convert Message to Map
   Map<String, dynamic> toMap() {
     return {
       'id': _id,
@@ -55,10 +61,11 @@ class Message {
       'receiverId': _receiverId,
       'content': _content,
       'timestamp': _timestamp,
-      /* 'isRead': _isRead ? 1 : 0, */
+      'channelId': _channelId,
     };
   }
 
+  // Convert Map to Message
   factory Message.fromMap(Map<String, dynamic> map) {
     return Message(
       id: map['id'],
@@ -66,7 +73,7 @@ class Message {
       receiverId: map['receiverId'],
       content: map['content'],
       timestamp: map['timestamp'],
-      /* isRead: map['isRead'] == 1, */
+      channelId: map['channelId'],
     );
   }
 }

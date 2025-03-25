@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/services/database/channel_service.dart';
 
 class ChannelsScreen extends StatefulWidget {
   const ChannelsScreen({super.key});
@@ -11,7 +13,19 @@ class ChannelsScreen extends StatefulWidget {
 
 class _ChannelsScreenState extends State<ChannelsScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final List<String> _channels = [];
+  final ChannelService _channelService = ChannelService();
+  List<Channel> _channels = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChannels();
+  }
+
+  Future<void> _loadChannels() async {
+    final fetched = await _channelService.getAllChannels();
+    setState(() => _channels = fetched);
+  }
 
   void _addChannel() {
     showDialog(
@@ -30,12 +44,12 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
               child: const Text("Cancel"),
             ),
             ElevatedButton(
-              onPressed: () {
-                if (newChannelController.text.isNotEmpty) {
-                  setState(() {
-                    _channels.add(newChannelController.text);
-                  });
+              onPressed: () async {
+                final name = newChannelController.text.trim();
+                if (name.isNotEmpty) {
+                  await _channelService.createChannel(Channel(name: name));
                   Navigator.pop(context);
+                  await _loadChannels();
                 }
               },
               child: const Text("Add"),
@@ -43,6 +57,32 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           ],
         );
       },
+    );
+  }
+
+  void _confirmDelete(Channel channel) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Delete Channel"),
+            content: Text("Are you sure you want to delete '${channel.name}'?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Cancel"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () async {
+                  await _channelService.deleteChannel(channel.id!);
+                  Navigator.pop(context);
+                  await _loadChannels();
+                },
+                child: const Text("Delete"),
+              ),
+            ],
+          ),
     );
   }
 
@@ -73,6 +113,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         child: Column(
           children: [
+            //To check if all channels are being fetched
+            ElevatedButton(
+              onPressed: () async {
+                final channels = await _channelService.getAllChannels();
+                for (var c in channels) {
+                  print(" CHANNEL: id=${c.id}, name=${c.name}");
+                }
+              },
+              child: const Text("Log All Channels"),
+            ),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w),
               margin: EdgeInsets.only(bottom: 10.h),
@@ -90,7 +140,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                 ),
               ),
             ),
-
             Expanded(
               child:
                   _channels.isEmpty
@@ -98,6 +147,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                       : ListView.builder(
                         itemCount: _channels.length,
                         itemBuilder: (context, index) {
+                          final channel = _channels[index];
+                          print(
+                            " Channel Found → ID: ${channel.id}, Name: ${channel.name}",
+                          );
+                          final search = _searchController.text.toLowerCase();
+                          if (search.isNotEmpty &&
+                              !channel.name.toLowerCase().contains(search)) {
+                            return const SizedBox.shrink();
+                          }
+
                           return ListTile(
                             leading: CircleAvatar(
                               backgroundColor: Colors.grey.shade300,
@@ -107,16 +166,20 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                               ),
                             ),
                             title: Text(
-                              _channels[index],
+                              channel.name,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
+                            ),
+                            trailing: IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red[300]),
+                              onPressed: () => _confirmDelete(channel),
                             ),
                             onTap: () {
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,
-                                arguments: _channels[index],
+                                arguments: channel.name,
                               );
                             },
                           );
@@ -126,7 +189,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           ],
         ),
       ),
-
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
