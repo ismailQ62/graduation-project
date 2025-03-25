@@ -148,9 +148,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                         itemCount: _channels.length,
                         itemBuilder: (context, index) {
                           final channel = _channels[index];
-                          print(
-                            " Channel Found → ID: ${channel.id}, Name: ${channel.name}",
-                          );
+
                           final search = _searchController.text.toLowerCase();
                           if (search.isNotEmpty &&
                               !channel.name.toLowerCase().contains(search)) {

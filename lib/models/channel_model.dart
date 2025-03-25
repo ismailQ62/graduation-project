@@ -8,11 +8,9 @@ class Channel {
     }
   }
 
-  // Getters
   int? get id => _id;
   String get name => _name;
 
-  // Setters
   set name(String value) {
     if (value.isEmpty) {
       throw ArgumentError("Channel name cannot be empty");

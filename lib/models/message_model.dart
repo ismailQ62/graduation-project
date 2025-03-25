@@ -30,7 +30,6 @@ class Message {
     }
   }
 
-  // Getters
   int? get id => _id;
   String get senderId => _senderId;
   String get receiverId => _receiverId;
@@ -38,7 +37,6 @@ class Message {
   String get timestamp => _timestamp;
   int get channelId => _channelId;
 
-  // Setters
   set content(String value) {
     if (value.isEmpty) {
       throw ArgumentError("Message content must not be empty");
@@ -53,7 +51,6 @@ class Message {
     _channelId = value;
   }
 
-  // Convert Message to Map
   Map<String, dynamic> toMap() {
     return {
       'id': _id,
@@ -65,7 +62,6 @@ class Message {
     };
   }
 
-  // Convert Map to Message
   factory Message.fromMap(Map<String, dynamic> map) {
     return Message(
       id: map['id'],
