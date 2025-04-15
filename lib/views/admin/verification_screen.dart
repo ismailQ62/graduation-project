@@ -12,6 +12,7 @@ class VerificationScreen extends StatefulWidget {
 
 class _VerificationScreenState extends State<VerificationScreen> {
   File? _selectedImage;
+  bool _isLoading = false;
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(
@@ -23,6 +24,27 @@ class _VerificationScreenState extends State<VerificationScreen> {
         _selectedImage = File(pickedFile.path);
       });
     }
+  }
+
+  Future<void> _verify() async {
+    if (_selectedImage == null) return;
+
+    setState(() => _isLoading = true);
+
+    await Future.delayed(
+      const Duration(seconds: 2),
+    ); // simulate verification delay
+
+    setState(() => _isLoading = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text("Verified successfully!"),
+        backgroundColor: Colors.green,
+      ),
+    );
+
+    Navigator.pop(context); // go back
   }
 
   @override
@@ -69,7 +91,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                 ),
                 padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 20.w),
               ),
-              icon: Icon(Icons.cloud_upload, color: Colors.white),
+              icon: const Icon(Icons.cloud_upload, color: Colors.white),
               label: Text(
                 "Upload",
                 style: TextStyle(fontSize: 16.sp, color: Colors.white),
@@ -85,22 +107,24 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     SizedBox(height: 10.h),
                   ],
                 )
-                : SizedBox.shrink(),
+                : const SizedBox.shrink(),
 
-            ElevatedButton(
-              onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade900,
-                minimumSize: Size(double.infinity, 50.h),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
+            _isLoading
+                ? const CircularProgressIndicator()
+                : ElevatedButton(
+                  onPressed: _verify,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade900,
+                    minimumSize: Size(double.infinity, 50.h),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
+                  child: Text(
+                    "Verify",
+                    style: TextStyle(fontSize: 18.sp, color: Colors.white),
+                  ),
                 ),
-              ),
-              child: Text(
-                "Verify",
-                style: TextStyle(fontSize: 18.sp, color: Colors.white),
-              ),
-            ),
           ],
         ),
       ),

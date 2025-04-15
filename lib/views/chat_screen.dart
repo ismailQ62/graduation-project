@@ -72,20 +72,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
       // Get most recent channel ID if any
       List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
-      String channelId = dbMessages.isNotEmpty
-          ? dbMessages.first['channelId'].toString()
-          : "1";
+      String channelId =
+          dbMessages.isNotEmpty
+              ? dbMessages.first['channelId'].toString()
+              : "1";
 
       Map<String, dynamic> messageJson = {
         "senderID": nationalId,
         "username": username,
-        "date": "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}",
-        "time": "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
+        "date":
+            "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}",
+        "time":
+            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
         "content": content,
         "channelID": channelId,
         "zoneID": zoneId,
         "receiver": "ALL",
-        "gps": "32.1234,36.5678" // Replace with actual GPS
+        "gps": "32.1234,36.5678", // Replace with actual GPS
       };
 
       try {

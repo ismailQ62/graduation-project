@@ -102,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               icon: Icon(Icons.chat, size: 28.sp),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.chat);
+                Navigator.pushNamed(context, AppRoutes.channels);
               },
             ),
 

@@ -27,7 +27,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     setState(() => _channels = fetched);
   }
 
-  void _addChannel() {
+  /* void _addChannel() {
     showDialog(
       context: context,
       builder: (context) {
@@ -84,7 +84,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
             ],
           ),
     );
-  }
+  } */
 
   @override
   Widget build(BuildContext context) {
@@ -102,12 +102,12 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
+        /* actions: [
           IconButton(
             icon: const Icon(Icons.add, color: Colors.black),
             onPressed: _addChannel,
           ),
-        ],
+        ], */
       ),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -169,10 +169,10 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            trailing: IconButton(
+                            /*  trailing: IconButton(
                               icon: Icon(Icons.delete, color: Colors.red[300]),
                               onPressed: () => _confirmDelete(channel),
-                            ),
+                            ), */
                             onTap: () {
                               Navigator.pushNamed(
                                 context,
@@ -187,7 +187,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomAppBar(
+      /* bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
         child: Row(
@@ -220,7 +220,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
             ),
           ],
         ),
-      ),
+      ), */
     );
   }
 }
