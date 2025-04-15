@@ -50,12 +50,24 @@ class DatabaseService {
     )
   ''');
 
+    // NOTE: no AUTOINCREMENT to allow manual ID for static channels
     await db.execute('''
     CREATE TABLE IF NOT EXISTS channels (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id INTEGER PRIMARY KEY,
       name TEXT NOT NULL
     )
   ''');
+
+    // Insert default channels with fixed IDs
+    final existing = await db.query('channels');
+    final existingIds = existing.map((e) => e['id']).toList();
+
+    if (!existingIds.contains(1)) {
+      await db.insert('channels', {'id': 1, 'name': 'Main Channel'});
+    }
+    if (!existingIds.contains(2)) {
+      await db.insert('channels', {'id': 2, 'name': 'News Channel'});
+    }
   }
 
   Future<void> insertMessage({
@@ -64,7 +76,6 @@ class DatabaseService {
     required String timestamp,
   }) async {
     final db = await database;
-
     await db.insert('messages', {
       'senderId': sender,
       'content': text,
@@ -74,11 +85,7 @@ class DatabaseService {
 
   Future<List<Map<String, dynamic>>> getMessages() async {
     final db = await database;
-    List<Map<String, dynamic>> result = await db.query(
-      'messages',
-      orderBy: 'timestamp DESC',
-    );
-    return result;
+    return await db.query('messages', orderBy: 'timestamp DESC');
   }
 
   Future<void> deleteOldMessages() async {
@@ -94,6 +101,8 @@ class DatabaseService {
 
   Future<List<Map<String, dynamic>>> getUsers() async {
     final db = await database;
-    return await db.query('users'); // Fetch all users
+    return await db.query('users');
   }
+
+  // Future<void> deleteUser(int id) async {
 }
