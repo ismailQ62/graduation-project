@@ -3,21 +3,21 @@ import 'package:web_socket_channel/io.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'dart:convert';
 
-class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+class SosChatScreen extends StatefulWidget {
+  const SosChatScreen({super.key});
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  _SosChatScreenState createState() => _SosChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _SosChatScreenState extends State<SosChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final DatabaseService _dbService = DatabaseService();
   final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
 
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic>? _currentUser;
-  String _messageType = "Chat";
+  String _messageType = "SOS"; // Default type
 
   @override
   void initState() {
@@ -26,17 +26,17 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadMessages();
 
     _channel.stream.listen((message) async {
-      final receivedMessage = message.toString();
-      final jsonMessage = jsonDecode(receivedMessage);
+      final received = message.toString();
+      final jsonMessage = jsonDecode(received);
 
       final senderId = jsonMessage["senderID"] ?? "ESP32";
-      final content = jsonMessage["content"] ?? receivedMessage;
+      final content = jsonMessage["content"] ?? received;
       final timestamp = DateTime.now().toIso8601String();
       final msgType = jsonMessage["type"] ?? "unknown";
 
       await _dbService.insertMessage(
         sender: senderId,
-        text: receivedMessage,
+        text: content,
         timestamp: timestamp,
         //type: msgType,
       );
@@ -44,7 +44,7 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _messages.add({
           'sender': senderId,
-          'text': receivedMessage,
+          'text': content,
           'timestamp': timestamp,
           'type': msgType,
         });
@@ -75,14 +75,14 @@ class _ChatScreenState extends State<ChatScreen> {
 
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId = "ZONE_A"; // Replace if you store this in the DB
+      String zoneId = "ZONE_A"; // Replace if dynamic
 
-      // Get most recent channel ID if any
+      // Get most recent channel ID from DB
       List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
-      String channelId =
-          dbMessages.isNotEmpty
-              ? dbMessages.first['channelId'].toString()
-              : "1";
+      String channelId = 
+        dbMessages.isNotEmpty
+          ? dbMessages.first['channelId'].toString()
+          : "1";
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -96,7 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
         "channelID": channelId,
         "zoneID": zoneId,
         "receiver": "ALL",
-        "gps": "32.1234,36.5678", // Replace with actual GPS
+        "gps": "32.1234,36.5678" // Replace with real GPS
       };
 
       try {
@@ -122,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
       } catch (e) {
         debugPrint('Error sending message: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message. Please try again.')),
+          const SnackBar(content: Text('Failed to send message. Please try again.')),
         );
       }
     }
@@ -137,9 +137,26 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Chat")),
+      appBar: AppBar(title: const Text("LoRescue Chat")),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+            child: DropdownButton<String>(
+              value: _messageType,
+              items: ["SOS", "chat"].map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text("Type: $value"),
+                );
+              }).toList(),
+              onChanged: (newValue) {
+                setState(() {
+                  _messageType = newValue!;
+                });
+              },
+            ),
+          ),
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
@@ -147,10 +164,11 @@ class _ChatScreenState extends State<ChatScreen> {
                 final message = _messages[index];
                 final senderId = message['sender'] ?? 'Unknown';
                 final content = message['text'] ?? 'No content';
-                final timestamp = message['timestamp'];
+                final timestamp = message['timestamp'] ?? '';
+                final msgType = message['type'] ?? 'unknown';
 
                 return ListTile(
-                  title: Text('Sender: $senderId\nMessage: $content'),
+                  title: Text('[$msgType] Sender: $senderId\nMessage: $content'),
                   subtitle: Text('Sent at: $timestamp'),
                 );
               },

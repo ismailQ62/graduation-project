@@ -41,6 +41,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          Navigator.pushNamed(context, AppRoutes.sosChat);
           // Navigate to alert broadcasting or emergency screen
         },
         backgroundColor: Colors.red,
