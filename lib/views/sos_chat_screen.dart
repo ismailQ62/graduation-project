@@ -38,7 +38,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         sender: senderId,
         text: content,
         timestamp: timestamp,
-        //type: msgType,
+        type: msgType,
       );
 
       setState(() {
@@ -62,7 +62,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
@@ -78,7 +78,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
       String zoneId = "ZONE_A"; // Replace if dynamic
 
       // Get most recent channel ID from DB
-      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
+      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
       String channelId = 
         dbMessages.isNotEmpty
           ? dbMessages.first['channelId'].toString()
@@ -106,7 +106,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           sender: nationalId,
           text: content,
           timestamp: now.toIso8601String(),
-          //type: _messageType,
+          type: _messageType,
         );
 
         setState(() {

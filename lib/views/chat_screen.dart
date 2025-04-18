@@ -36,15 +36,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
       await _dbService.insertMessage(
         sender: senderId,
-        text: receivedMessage,
+        text: content,
         timestamp: timestamp,
-        //type: msgType,
+        type: _messageType,
       );
 
       setState(() {
         _messages.add({
           'sender': senderId,
-          'text': receivedMessage,
+          'text': content,
           'timestamp': timestamp,
           'type': msgType,
         });
@@ -62,7 +62,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
@@ -78,7 +78,7 @@ class _ChatScreenState extends State<ChatScreen> {
       String zoneId = "ZONE_A"; // Replace if you store this in the DB
 
       // Get most recent channel ID if any
-      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages();
+      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
       String channelId =
           dbMessages.isNotEmpty
               ? dbMessages.first['channelId'].toString()
@@ -106,7 +106,7 @@ class _ChatScreenState extends State<ChatScreen> {
           sender: nationalId,
           text: content,
           timestamp: now.toIso8601String(),
-          //type: _messageType,
+          type: _messageType,
         );
 
         setState(() {

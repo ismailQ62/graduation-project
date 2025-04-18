@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {Navigator.pushNamed(context, AppRoutes.sosChat);},
         backgroundColor: Colors.red,
         child: Text(
           "SOS",

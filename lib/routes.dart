@@ -54,7 +54,7 @@ class AppRoutes {
       case homeResponder:
         return MaterialPageRoute(builder: (_) => const HomeResponderScreen());
       case sosChat:
-        return MaterialPageRoute(builder: (_) => const HomeResponderScreen());
+        return MaterialPageRoute(builder: (_) => const SosChatScreen());
       case homeAdmin:
         return MaterialPageRoute(builder: (_) => const HomeAdminScreen());
       default:
