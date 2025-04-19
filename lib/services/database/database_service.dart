@@ -46,7 +46,8 @@ class DatabaseService {
       content TEXT NOT NULL,
       timestamp TEXT NOT NULL,
       isRead INTEGER NOT NULL DEFAULT 0,
-      channelId INTEGER NOT NULL DEFAULT 1
+      channelId INTEGER NOT NULL DEFAULT 1,
+      type TEXT NOT NULL
     )
   ''');
 
@@ -74,18 +75,20 @@ class DatabaseService {
     required String sender,
     required String text,
     required String timestamp,
+    required String type,
   }) async {
     final db = await database;
     await db.insert('messages', {
       'senderId': sender,
       'content': text,
       'timestamp': timestamp,
+      'type': type,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
-  Future<List<Map<String, dynamic>>> getMessages() async {
+  Future<List<Map<String, dynamic>>> getMessages(String type) async {
     final db = await database;
-    return await db.query('messages', orderBy: 'timestamp DESC');
+    return await db.query('messages', where: 'type = ?' , whereArgs: [type] ,orderBy: 'timestamp DESC');
   }
 
   Future<void> deleteOldMessages() async {

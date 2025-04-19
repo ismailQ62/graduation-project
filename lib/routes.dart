@@ -10,6 +10,7 @@ import 'package:lorescue/views/home_screen.dart';
 import 'package:lorescue/views/chat_screen.dart';
 import 'package:lorescue/views/profile_screen.dart';
 import 'package:lorescue/views/Responder/home_Responder_screen.dart';
+import 'package:lorescue/views/sos_chat_screen.dart';
 
 import 'package:lorescue/views/channels_screen.dart';
 
@@ -26,6 +27,7 @@ class AppRoutes {
   static const String channels = "/channels";
   static const String homeAdmin = "/homeAdmin";
   static const String homeResponder = "/homeResponder";
+  static const String sosChat = "/sosChat";
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -51,6 +53,8 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const VerificationScreen());
       case homeResponder:
         return MaterialPageRoute(builder: (_) => const HomeResponderScreen());
+      case sosChat:
+        return MaterialPageRoute(builder: (_) => const SosChatScreen());
       case homeAdmin:
         return MaterialPageRoute(builder: (_) => const HomeAdminScreen());
       default:
