@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/routes.dart';
 
 class HomeResponderScreen extends StatefulWidget {
@@ -39,16 +40,53 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
         ),
       ),
 
+      //Alert Button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to alert broadcasting or emergency screen
+          final TextEditingController _alertMessageController =
+              TextEditingController();
+
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text("Emergency Alert"),
+                content: TextField(
+                  controller: _alertMessageController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: "Enter and alert ",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      String message = _alertMessageController.text.trim();
+                      if (message.isNotEmpty) {
+                        NotificationController.showNotification(
+                          title: "⚠️ Alert ",
+                          body: message,
+                          // role: "Responder",
+                          sound: "emergency_alert",
+                          id: 1,
+                        );
+                      }
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text("Send"),
+                  ),
+                ],
+              );
+            },
+          );
         },
-        backgroundColor: Colors.red,
-        child: Icon(
-          Icons.access_alarms, // or Icons.warning, Icons.emergency
-          color: Colors.white,
-          size: 28.sp,
-        ),
+        backgroundColor: const Color.fromARGB(255, 244, 228, 58),
+        child: Icon(Icons.access_alarms, color: Colors.white, size: 28.sp),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
@@ -89,3 +127,33 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
     );
   }
 }
+
+// send to ESP32
+/* onPressed: () {
+  String message = _alertMessageController.text.trim();
+  if (message.isNotEmpty) {
+    
+    NotificationController.showNotification(
+      title: "⚠️ Alert ",
+      body: message,
+      sound: "emergency_alert",
+      id: 1,
+    );
+
+    // ✅ Send to ESP32
+    final socket = ESP32SocketService();
+    socket.connect();
+
+    final alertPayload = {
+      "role": "Responder",
+      "type": "alert",
+      "message": message,
+      "timestamp": DateTime.now().toIso8601String(),
+    };
+
+    socket.sendMessage(jsonEncode(alertPayload));
+  }
+
+  Navigator.of(context).pop();
+},
+ */

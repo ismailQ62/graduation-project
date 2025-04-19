@@ -10,6 +10,7 @@
     <!-- ✅ Moved <uses-feature> OUTSIDE <application> -->
     <uses-feature android:name="android.hardware.location.gps" android:required="false"/>
     <uses-feature android:name="android.hardware.bluetooth" android:required="true"/>
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="lorescue"

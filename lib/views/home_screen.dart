@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/controllers/notification_controller.dart';
 
 //import 'package:lorescue/routes.dart';
 
@@ -123,8 +124,51 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
+      //sos button
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          final TextEditingController _sosMessageController =
+              TextEditingController();
+
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text("Send SOS "),
+                content: TextField(
+                  controller: _sosMessageController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: "Enter SOS message",
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("Cancel"),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      String message = _sosMessageController.text.trim();
+                      if (message.isNotEmpty) {
+                        NotificationController.showNotification(
+                          title: "🚨 SOS ",
+                          body: message,
+                          //  role: "Individual",
+                          sound: "whoop_alert",
+                          id: 2,
+                        );
+                      }
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text("Send"),
+                  ),
+                ],
+              );
+            },
+          );
+        },
         backgroundColor: Colors.red,
         child: Text(
           "SOS",
@@ -135,3 +179,33 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
+
+//if we want to use esp32 maybe work correctly with it
+/* channel.stream.listen((message) {
+  final decoded = jsonDecode(message);
+
+  if (decoded['type'] == 'alert' && decoded['role'] == 'Responder') {
+    NotificationController.showNotification(
+      title: "🚨 EMR Alert",
+      body: decoded['message'],
+      role: "Individual", // so it plays SOS sound
+      id: 888,
+    );
+  }
+}); */
+
+//  cpp code for esp32
+/* webSocket.onEvent([](WebSocket &server, WebSocketClient &client, WSEventType type, uint8_t *data, size_t len) {
+  if (type == WStype_TEXT) {
+    String message = String((char *)data);
+    Serial.println("Received: " + message);
+    
+    // Broadcast to ALL connected clients
+    for (auto &c : server.getClients()) {
+      if (c.connected()) {
+        c.sendTXT(message); // forward it
+      }
+    }
+  }
+}); */
