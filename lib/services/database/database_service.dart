@@ -76,6 +76,7 @@ class DatabaseService {
     required String text,
     required String timestamp,
     required String type,
+    required int channelId
   }) async {
     final db = await database;
     await db.insert('messages', {
@@ -83,6 +84,7 @@ class DatabaseService {
       'content': text,
       'timestamp': timestamp,
       'type': type,
+      'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
@@ -106,6 +108,18 @@ class DatabaseService {
     final db = await database;
     return await db.query('users');
   }
+
+Future<List<Map<String, dynamic>>> getMessagesForChannel(String type, int channelId) async {
+  final db = await database;
+  return await db.query(
+    'messages',
+    where: 'type = ? AND channelId = ?',
+    whereArgs: [type, channelId],
+    orderBy: 'timestamp DESC',
+  );
+}
+
+
 
   // Future<void> deleteUser(int id) async {
 }

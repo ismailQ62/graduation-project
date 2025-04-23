@@ -105,7 +105,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
             IconButton(
               icon: Icon(Icons.chat, size: 28.sp),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.channels);
+                Navigator.pushNamed(context, AppRoutes.sosChat);
               },
             ),
             SizedBox(width: 48.w),

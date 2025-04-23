@@ -3,9 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
-import 'package:lorescue/controllers/notification_controller.dart';
-
-//import 'package:lorescue/routes.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,9 +16,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final MapController _mapController;
-  // ignore: prefer_final_fields
   LatLng _currentLocation = const LatLng(32.49789641037709, 35.98605293585062);
   double _currentZoom = 15.0;
+
+  String buttonText = 'Connect to LoRescue Network';
+  WebSocketChannel? channel;
 
   @override
   void initState() {
@@ -40,12 +42,49 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void connectToWebSocket() {
+    try {
+      channel = WebSocketChannel.connect(
+        Uri.parse('ws://192.168.4.1:81'),
+      );
+
+      channel!.stream.listen((message) {
+        setState(() {
+          buttonText = 'Connected to Zone: $message';
+        });
+      }, onError: (error) {
+        setState(() {
+          buttonText = 'Connection error';
+        });
+      });
+    } catch (e) {
+      setState(() {
+        buttonText = 'Connection failed';
+      });
+    }
+  }
+
+  void openWifiSettings() {
+    final intent = AndroidIntent(
+      action: 'android.settings.WIFI_SETTINGS',
+      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+    );
+    intent.launch();
+  }
+
+  @override
+  void dispose() {
+    channel?.sink.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
+          // Flutter Map
           SizedBox(
             height: MediaQuery.of(context).size.height,
             child: FlutterMap(
@@ -56,14 +95,14 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                   subdomains: ['a', 'b', 'c'],
                 ),
               ],
             ),
           ),
 
+          // Zoom Buttons
           Positioned(
             bottom: 100.h,
             right: 20.w,
@@ -85,9 +124,26 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
+          // Connect Button
+          Positioned(
+            bottom: 30.h,
+            left: 20.w,
+            right: 20.w,
+            child: ElevatedButton(
+              onPressed: () {
+                openWifiSettings();
+                Future.delayed(const Duration(seconds: 5), () {
+                  connectToWebSocket();
+                });
+              },
+              child: Text(buttonText),
+            ),
+          ),
         ],
       ),
 
+      // Bottom Navigation
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
@@ -106,7 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pushNamed(context, AppRoutes.channels);
               },
             ),
-
             SizedBox(width: 48.w),
             IconButton(
               icon: Icon(Icons.map, size: 28.sp),
@@ -124,53 +179,13 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      //sos button
+      // SOS Button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          final TextEditingController _sosMessageController =
-              TextEditingController();
-
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text("Send SOS "),
-                content: TextField(
-                  controller: _sosMessageController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: "Enter SOS message",
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text("Cancel"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      String message = _sosMessageController.text.trim();
-                      if (message.isNotEmpty) {
-                        NotificationController.showNotification(
-                          title: "🚨 SOS ",
-                          body: message,
-                          //  role: "Individual",
-                          sound: "whoop_alert",
-                          id: 2,
-                        );
-                      }
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text("Send"),
-                  ),
-                ],
-              );
-            },
-          );
+          Navigator.pushNamed(context, AppRoutes.sosChat);
         },
         backgroundColor: Colors.red,
-        child: Text(
+        child: const Text(
           "SOS",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
@@ -179,33 +194,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
-
-//if we want to use esp32 maybe work correctly with it
-/* channel.stream.listen((message) {
-  final decoded = jsonDecode(message);
-
-  if (decoded['type'] == 'alert' && decoded['role'] == 'Responder') {
-    NotificationController.showNotification(
-      title: "🚨 EMR Alert",
-      body: decoded['message'],
-      role: "Individual", // so it plays SOS sound
-      id: 888,
-    );
-  }
-}); */
-
-//  cpp code for esp32
-/* webSocket.onEvent([](WebSocket &server, WebSocketClient &client, WSEventType type, uint8_t *data, size_t len) {
-  if (type == WStype_TEXT) {
-    String message = String((char *)data);
-    Serial.println("Received: " + message);
-    
-    // Broadcast to ALL connected clients
-    for (auto &c : server.getClients()) {
-      if (c.connected()) {
-        c.sendTXT(message); // forward it
-      }
-    }
-  }
-}); */

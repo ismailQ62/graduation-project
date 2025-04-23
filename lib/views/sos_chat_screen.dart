@@ -39,6 +39,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         text: content,
         timestamp: timestamp,
         type: msgType,
+        channelId:0,
       );
 
       setState(() {
@@ -107,6 +108,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           text: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
+          channelId: 0,
         );
 
         setState(() {
@@ -137,10 +139,10 @@ class _SosChatScreenState extends State<SosChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("LoRescue Chat")),
+      appBar: AppBar(title: const Text("SOS Chat")),
       body: Column(
         children: [
-          Padding(
+         /* Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
             child: DropdownButton<String>(
               value: _messageType,
@@ -156,14 +158,14 @@ class _SosChatScreenState extends State<SosChatScreen> {
                 });
               },
             ),
-          ),
+          ),*/
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
               itemBuilder: (context, index) {
                 final message = _messages[index];
-                final senderId = message['sender'] ?? 'Unknown';
-                final content = message['text'] ?? 'No content';
+                final senderId = message['sender'] ?? message['senderId'] ??'Unknown';
+                final content = message['text'] ??message['content'] ??'No content';
                 final timestamp = message['timestamp'] ?? '';
                 final msgType = message['type'] ?? 'unknown';
 

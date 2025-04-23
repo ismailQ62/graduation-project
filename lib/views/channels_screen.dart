@@ -177,7 +177,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,
-                                arguments: channel.name,
+                                arguments: channel,
                               );
                             },
                           );

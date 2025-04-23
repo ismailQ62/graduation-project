@@ -11,7 +11,7 @@ import 'package:lorescue/views/chat_screen.dart';
 import 'package:lorescue/views/profile_screen.dart';
 import 'package:lorescue/views/Responder/home_Responder_screen.dart';
 import 'package:lorescue/views/sos_chat_screen.dart';
-
+import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/views/channels_screen.dart';
 
 class AppRoutes {
@@ -42,7 +42,8 @@ class AppRoutes {
       case home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
       case chat:
-        return MaterialPageRoute(builder: (_) => const ChatScreen());
+      final channel = settings.arguments as Channel;
+        return MaterialPageRoute(builder: (_) =>  ChatScreen(channel: channel),);
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
       case manageChannel:
