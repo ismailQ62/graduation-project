@@ -13,6 +13,7 @@ import 'package:lorescue/views/Responder/home_Responder_screen.dart';
 import 'package:lorescue/views/sos_chat_screen.dart';
 import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/views/channels_screen.dart';
+import 'package:lorescue/models/zone_model.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -42,14 +43,20 @@ class AppRoutes {
       case home:
         return MaterialPageRoute(builder: (_) => const HomeScreen());
       case chat:
-      final channel = settings.arguments as Channel;
-        return MaterialPageRoute(builder: (_) =>  ChatScreen(channel: channel),);
+        final args = settings.arguments as Map<String, dynamic>;
+        final channel = args['channel'] as Channel;
+        final zone = args['zone'] as Zone;
+        return MaterialPageRoute(
+          builder: (_) => ChatScreen(channel: channel, zone: zone),
+        );
+
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfileScreen());
       case manageChannel:
         return MaterialPageRoute(builder: (_) => const ManageChannelsScreen());
       case channels:
-        return MaterialPageRoute(builder: (_) => const ChannelsScreen());
+        final zone = settings.arguments as Zone;
+        return MaterialPageRoute(builder: (context) => ChannelsScreen(zone: zone),);
       case verification:
         return MaterialPageRoute(builder: (_) => const VerificationScreen());
       case homeResponder:

@@ -6,6 +6,7 @@ import 'package:lorescue/routes.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import 'package:lorescue/models/zone_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,8 @@ class _HomeScreenState extends State<HomeScreen> {
   late final MapController _mapController;
   LatLng _currentLocation = const LatLng(32.49789641037709, 35.98605293585062);
   double _currentZoom = 15.0;
+  Zone _zone = Zone(id: '', name: 'Default Zone');
+
 
   String buttonText = 'Connect to LoRescue Network';
   WebSocketChannel? channel;
@@ -50,7 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
       channel!.stream.listen((message) {
         setState(() {
-          buttonText = 'Connected to Zone: $message';
+          _zone.id = message; 
+          buttonText = 'Connected to Zone: ${_zone.id}';
         });
       }, onError: (error) {
         setState(() {
@@ -159,7 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               icon: Icon(Icons.chat, size: 28.sp),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.channels);
+                Navigator.pushNamed(context, AppRoutes.channels, arguments: _zone);
+                
               },
             ),
             SizedBox(width: 48.w),

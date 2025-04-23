@@ -76,6 +76,7 @@ class DatabaseService {
     required String text,
     required String timestamp,
     required String type,
+    required String receiverZone,
     required int channelId
   }) async {
     final db = await database;
@@ -84,6 +85,7 @@ class DatabaseService {
       'content': text,
       'timestamp': timestamp,
       'type': type,
+      'receiverId': receiverZone,
       'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }

@@ -40,6 +40,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         timestamp: timestamp,
         type: msgType,
         channelId:0,
+        receiverZone: "ALL",
       );
 
       setState(() {
@@ -109,6 +110,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           timestamp: now.toIso8601String(),
           type: _messageType,
           channelId: 0,
+          receiverZone: "ALL",
         );
 
         setState(() {
@@ -142,7 +144,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
       appBar: AppBar(title: const Text("SOS Chat")),
       body: Column(
         children: [
-         /* Padding(
+         Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
             child: DropdownButton<String>(
               value: _messageType,
@@ -158,7 +160,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
                 });
               },
             ),
-          ),*/
+          ),
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,

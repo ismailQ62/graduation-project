@@ -3,9 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/channel_service.dart';
+import 'package:lorescue/models/zone_model.dart';
 
 class ChannelsScreen extends StatefulWidget {
-  const ChannelsScreen({super.key});
+  final Zone zone;
+  const ChannelsScreen({super.key, required this.zone});
 
   @override
   _ChannelsScreenState createState() => _ChannelsScreenState();
@@ -15,6 +17,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ChannelService _channelService = ChannelService();
   List<Channel> _channels = [];
+  
 
   @override
   void initState() {
@@ -88,13 +91,14 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    //final Zone zone = ModalRoute.of(context)!.settings.arguments as Zone;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          "Channels",
+          "Channels - Zone: ${widget.zone.id}",
           style: TextStyle(
             fontSize: 20.sp,
             fontWeight: FontWeight.bold,
@@ -177,7 +181,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,
-                                arguments: channel,
+                                arguments: {'channel': channel, 'zone': widget.zone},
                               );
                             },
                           );
