@@ -6,12 +6,28 @@ import 'package:lorescue/routes.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/database/user_service.dart';
 
+import 'dart:convert';
+import 'package:web_socket_channel/io.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
   // ignore: library_private_types_in_public_api
   _RegisterScreenState createState() => _RegisterScreenState();
+}
+
+Future<bool> ConnectedToWifi() async {
+  final info = NetworkInfo();
+
+  String? wifiName = await info.getWifiName();
+
+  if (wifiName != null && wifiName.isNotEmpty) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -26,8 +42,81 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _selectedRole;
   final List<String> roles = ["Individual", "Admin", "Responder"];
+  late IOWebSocketChannel _channel;
+  @override
+  void initState() {
+    super.initState();
+
+    _channel = IOWebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
+  }
+
+  @override
+  void dispose() {
+    _channel.sink.close();
+    super.dispose();
+  }
 
   void _register() async {
+    bool isConnectedToWifi = await ConnectedToWifi();
+    if (!isConnectedToWifi) {
+      // Show a dialog if not connected to Wi-Fi
+      showDialog(
+        context: context,
+        builder:
+            (_) => Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.wifi_off, size: 60, color: Colors.redAccent),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No Wi-Fi Connection',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Please connect to any WiFi.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 25),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 30,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'OK',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+      );
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -44,7 +133,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _nationalIdController.text,
     );
     if (exists) {
-      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("National ID already exists"),
@@ -63,16 +151,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     await _userService.registerUser(newUser);
 
-    // ignore: use_build_context_synchronously
+    Map<String, dynamic> accountData = {
+      "type": "register",
+      "name": _usernameController.text,
+      "national_id": _nationalIdController.text,
+      "password": _passwordController.text,
+      "role": _selectedRole,
+    };
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Registration successful!"),
+        content: Text("Registration successful!  "),
         backgroundColor: Colors.green,
       ),
     );
 
+    String jsonData = jsonEncode(accountData);
+
+    _channel.sink.add(jsonData);
+
     Future.delayed(const Duration(seconds: 1), () {
-      // ignore: use_build_context_synchronously
       Navigator.pushNamed(context, AppRoutes.login);
     });
   }

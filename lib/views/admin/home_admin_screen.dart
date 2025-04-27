@@ -43,7 +43,7 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
         onPressed: () {
           Navigator.pushNamed(
             context,
-            AppRoutes.verification,
+            AppRoutes.manageUsers,
           ); // Navigate to user management
         },
         backgroundColor: Colors.deepPurple,

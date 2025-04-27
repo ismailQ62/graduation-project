@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/views/admin/home_admin_screen.dart';
+import 'package:lorescue/views/admin/manage_users_screen.dart';
 import 'package:lorescue/views/admin/mange_channel_screen.dart';
 import 'package:lorescue/views/admin/verification_screen.dart';
 import 'package:lorescue/views/splash_screen.dart';
@@ -29,7 +30,7 @@ class AppRoutes {
   static const String homeAdmin = "/homeAdmin";
   static const String homeResponder = "/homeResponder";
   static const String sosChat = "/sosChat";
-
+  static const String manageUsers = '/manageUsers';
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
@@ -56,7 +57,9 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const ManageChannelsScreen());
       case channels:
         final zone = settings.arguments as Zone;
-        return MaterialPageRoute(builder: (context) => ChannelsScreen(zone: zone),);
+        return MaterialPageRoute(
+          builder: (context) => ChannelsScreen(zone: zone),
+        );
       case verification:
         return MaterialPageRoute(builder: (_) => const VerificationScreen());
       case homeResponder:
@@ -65,6 +68,9 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SosChatScreen());
       case homeAdmin:
         return MaterialPageRoute(builder: (_) => const HomeAdminScreen());
+      case manageUsers:
+        return MaterialPageRoute(builder: (_) => const ManageUsersScreen());
+
       default:
         return MaterialPageRoute(
           builder:

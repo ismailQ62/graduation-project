@@ -41,4 +41,23 @@ class UserService {
     );
     return result.isNotEmpty;
   }
+
+  Future<List<User>> getAllUsers() async {
+    final db = await _dbService.database;
+    final List<Map<String, dynamic>> maps = await db.query('users');
+
+    return List.generate(maps.length, (i) {
+      return User(
+        name: maps[i]['name'],
+        nationalId: maps[i]['nationalId'],
+        password: maps[i]['password'],
+        role: maps[i]['role'],
+      );
+    });
+  }
+
+  Future<void> deleteUser(String nationalId) async {
+    final db = await _dbService.database;
+    await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
+  }
 }

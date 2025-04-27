@@ -43,12 +43,12 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushNamed(context, AppRoutes.home);
       }
     } else {
-      /* ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Invalid National ID or Password"),
           backgroundColor: Colors.red,
         ),
-      ); */
+      );
     }
   }
 
@@ -92,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: "National ID",
                   controller: _nationalIdController,
                   isNumber: true,
-                  /*  validator: (value) {
+                  validator: (value) {
                     if (value == null || value.isEmpty) {
                       return "National ID is required";
                     }
@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return "National ID must be exactly 10 digits";
                     }
                     return null;
-                  }, */
+                  },
                 ),
                 SizedBox(height: 15.h),
 
@@ -108,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   label: "Password",
                   controller: _passwordController,
                   isPassword: true,
-                  /* validator: (value) {
+                  validator: (value) {
                     if (value == null || value.isEmpty) {
                       return "Password is required";
                     }
@@ -121,7 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       return "Must include uppercase, lowercase & special character";
                     }
                     return null;
-                  }, */
+                  },
                 ),
                 SizedBox(height: 10.h),
 
