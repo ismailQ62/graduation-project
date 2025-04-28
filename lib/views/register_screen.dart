@@ -165,7 +165,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         backgroundColor: Colors.green,
       ),
     );
-
+    // Send the account data to the WebSocket server
     String jsonData = jsonEncode(accountData);
 
     _channel.sink.add(jsonData);

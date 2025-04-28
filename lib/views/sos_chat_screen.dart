@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'dart:convert';
@@ -17,7 +18,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic>? _currentUser;
-  String _messageType = "SOS"; // Default type
+  String _messageType = "SOS";
 
   @override
   void initState() {
@@ -39,7 +40,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         text: content,
         timestamp: timestamp,
         type: msgType,
-        channelId:0,
+        channelId: 0,
         receiverZone: "ALL",
       );
 
@@ -58,13 +59,15 @@ class _SosChatScreenState extends State<SosChatScreen> {
     List<Map<String, dynamic>> users = await _dbService.getUsers();
     if (users.isNotEmpty) {
       setState(() {
-        _currentUser = users.first; // Simulate the logged-in user
+        _currentUser = users.first;
       });
     }
   }
 
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
+      _messageType,
+    );
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
@@ -77,14 +80,15 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId = "ZONE_A"; // Replace if dynamic
+      String zoneId = "ZONE_A";
 
-      // Get most recent channel ID from DB
-      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType);
-      String channelId = 
-        dbMessages.isNotEmpty
-          ? dbMessages.first['channelId'].toString()
-          : "1";
+      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
+        _messageType,
+      );
+      String channelId =
+          dbMessages.isNotEmpty
+              ? dbMessages.first['channelId'].toString()
+              : "1";
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -98,7 +102,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "channelID": channelId,
         "zoneID": zoneId,
         "receiver": "ALL",
-        "gps": "32.1234,36.5678" // Replace with real GPS
+        "gps": "32.1234,36.5678",
       };
 
       try {
@@ -122,14 +126,63 @@ class _SosChatScreenState extends State<SosChatScreen> {
           });
         });
 
+        // if sending SOS message, show notification
+
+        /*  NotificationController.showNotification(
+          title: "New Message Sent",
+          body: content,
+          sound: "whoop_alert", 
+          id: 3, 
+        ); */
+
         _controller.clear();
       } catch (e) {
         debugPrint('Error sending message: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send message. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to send message. Please try again.'),
+          ),
         );
       }
     }
+  }
+
+  void _showSosDialog() {
+    final TextEditingController _sosMessageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Send SOS"),
+          content: TextField(
+            controller: _sosMessageController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: "Enter SOS message",
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                String message = _sosMessageController.text.trim();
+                if (message.isNotEmpty) {
+                  _controller.text = message;
+                  _sendMessage();
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -142,59 +195,126 @@ class _SosChatScreenState extends State<SosChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("SOS Chat")),
-      body: Column(
+      body: Stack(
         children: [
-         Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
-            child: DropdownButton<String>(
-              value: _messageType,
-              items: ["SOS", "chat"].map((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text("Type: $value"),
-                );
-              }).toList(),
-              onChanged: (newValue) {
-                setState(() {
-                  _messageType = newValue!;
-                });
-              },
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                final senderId = message['sender'] ?? message['senderId'] ??'Unknown';
-                final content = message['text'] ??message['content'] ??'No content';
-                final timestamp = message['timestamp'] ?? '';
-                final msgType = message['type'] ?? 'unknown';
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12.0,
+                  vertical: 4,
+                ),
+                child: DropdownButton<String>(
+                  value: _messageType,
+                  items:
+                      ["SOS", "chat"].map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text("Type: $value"),
+                        );
+                      }).toList(),
+                  onChanged: (newValue) {
+                    setState(() {
+                      _messageType = newValue!;
+                    });
+                  },
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    final message = _messages[index];
+                    final senderId =
+                        message['sender'] ?? message['senderId'] ?? 'Unknown';
+                    final content =
+                        message['text'] ?? message['content'] ?? 'No content';
+                    final timestamp = message['timestamp'] ?? '';
+                    final msgType = message['type'] ?? 'unknown';
 
-                return ListTile(
-                  title: Text('[$msgType] Sender: $senderId\nMessage: $content'),
-                  subtitle: Text('Sent at: $timestamp'),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      labelText: "Type a message",
-                    ),
+                    return ListTile(
+                      title: Text(
+                        '[$msgType] Sender: $senderId\nMessage: $content',
+                      ),
+                      subtitle: Text('Sent at: $timestamp'),
+                    );
+                  },
+                ),
+              ),
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          decoration: const InputDecoration(
+                            labelText: "Type a message",
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: _sendMessage,
+                      ),
+                    ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+              ),
+            ],
+          ),
+          Positioned(
+            bottom: 80,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: () {
+                final TextEditingController _sosMessageController =
+                    TextEditingController();
+
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AlertDialog(
+                      title: const Text("Send SOS"),
+                      content: TextField(
+                        controller: _sosMessageController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: "Enter SOS message",
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text("Cancel"),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            String message = _sosMessageController.text.trim();
+                            if (message.isNotEmpty) {
+                              NotificationController.showNotification(
+                                title: "🚨 SOS",
+                                body: message,
+                                sound: "whoop_alert",
+                                id: 2,
+                              );
+                            }
+                            Navigator.of(context).pop();
+                          },
+                          child: const Text("Send"),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              backgroundColor: Colors.redAccent,
+              child: const Icon(Icons.warning_amber_rounded, size: 32),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(15),
+              ),
             ),
           ),
         ],

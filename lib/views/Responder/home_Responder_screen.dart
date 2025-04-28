@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/routes.dart';
+import 'package:web_socket_channel/io.dart';
+import 'dart:convert';
+
+late IOWebSocketChannel _channel;
 
 class HomeResponderScreen extends StatefulWidget {
   const HomeResponderScreen({super.key});
@@ -11,6 +15,18 @@ class HomeResponderScreen extends StatefulWidget {
 }
 
 class _HomeResponderScreenState extends State<HomeResponderScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _channel = IOWebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
+  }
+
+  @override
+  void dispose() {
+    _channel.sink.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,17 +46,11 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                 ),
               ),
               SizedBox(height: 10.h),
-              /* Text(
-                ,
-                style: TextStyle(fontSize: 16.sp, color: Colors.black54),
-                textAlign: TextAlign.center,
-              ), */
             ],
           ),
         ),
       ),
 
-      //Alert Button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           final TextEditingController _alertMessageController =
@@ -55,7 +65,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                   controller: _alertMessageController,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    hintText: "Enter and alert ",
+                    hintText: "Enter an alert",
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -68,13 +78,35 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                     onPressed: () {
                       String message = _alertMessageController.text.trim();
                       if (message.isNotEmpty) {
+                        // Local Notification
                         NotificationController.showNotification(
-                          title: "⚠️ Alert ",
+                          title: "⚠️ Alert",
                           body: message,
-                          // role: "Responder",
                           sound: "emergency_alert",
                           id: 1,
                         );
+
+                        //  JSON alert
+                        final alertPayload = {
+                          "type": "ALERT",
+                          /*  "senderID":
+                              "Responder_123",  */
+                          //"username": "Responder",
+                          "role": "Responder",
+                          "content": message,
+                          "timestamp": DateTime.now().toIso8601String(),
+                          "zoneID": "ZONE_A",
+                          "receiver": "ALL",
+                        };
+                        // Send Alert over WebSocket
+                        _channel.sink.add(jsonEncode(alertPayload));
+
+                        /* try {
+                          _channel.sink.add(jsonEncode(alertPayload));
+                          print(" Responder alert sent to ESP32!");
+                        } catch (e) {
+                          print("Failed to send alert over WebSocket: $e");
+                        } */
                       }
                       Navigator.of(context).pop();
                     },
@@ -128,32 +160,24 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   }
 }
 
-// send to ESP32
-/* onPressed: () {
-  String message = _alertMessageController.text.trim();
-  if (message.isNotEmpty) {
-    
-    NotificationController.showNotification(
-      title: "⚠️ Alert ",
-      body: message,
-      sound: "emergency_alert",
-      id: 1,
-    );
+// WebSocket to broadcast alerts to all clients
+ /* void webSocketEvent(uint8_t client_num, WStype_t type, uint8_t* payload, size_t length) {
+  switch (type) {
+    case WStype_TEXT: {
+      // ✅ Flutter sends a JSON string (your alertPayload)
+      String incomingMessage = String((char*)payload);
 
-    // ✅ Send to ESP32
-    final socket = ESP32SocketService();
-    socket.connect();
+      Serial.print("Received from client: ");
+      Serial.println(incomingMessage);
 
-    final alertPayload = {
-      "role": "Responder",
-      "type": "alert",
-      "message": message,
-      "timestamp": DateTime.now().toIso8601String(),
-    };
+      // ✅ Directly broadcast this JSON to all other clients
+      webSocket.broadcastTXT(incomingMessage);
 
-    socket.sendMessage(jsonEncode(alertPayload));
-  }
+      Serial.println("Broadcasted to all clients.");
 
-  Navigator.of(context).pop();
-},
- */
+      break;
+    }
+    default:
+      break;
+  } */
+ 
