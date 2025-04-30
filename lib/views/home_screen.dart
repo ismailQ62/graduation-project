@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/services/database/user_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -21,7 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   double _currentZoom = 15.0;
   Zone _zone = Zone(id: '', name: 'Default Zone');
 
-
   String buttonText = 'Connect to LoRescue Network';
   WebSocketChannel? channel;
 
@@ -29,6 +30,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _mapController = MapController();
+
+    final user = AuthService.getCurrentUser();
+    if (user != null && user.connectedZone != null) {
+      setState(() {
+        _zone = Zone(id: user.connectedZone!, name: 'Auto-connected Zone');
+        buttonText = 'Connected to Zone: ${_zone.id}';
+      });
+    }
   }
 
   void _zoomIn() {
@@ -47,20 +56,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void connectToWebSocket() {
     try {
-      channel = WebSocketChannel.connect(
-        Uri.parse('ws://192.168.4.1:81'),
-      );
+      channel = WebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
 
-      channel!.stream.listen((message) {
-        setState(() {
-          _zone.id = message; 
-          buttonText = 'Connected to Zone: ${_zone.id}';
-        });
-      }, onError: (error) {
-        setState(() {
-          buttonText = 'Connection error';
-        });
-      });
+      channel!.stream.listen(
+        (message) async {
+          setState(() {
+            _zone.id = message;
+            buttonText = 'Connected to Zone: ${_zone.id}';
+          });
+          final user = AuthService.getCurrentUser();
+          if (user != null) {
+            user.connectedZoneId = _zone.id;
+            AuthService.setCurrentUser(user); // Update local cache
+
+            await UserService().updateUserZoneId(
+              user.nationalId,
+              _zone.id,
+            ); // Update DB
+          }
+        },
+        onError: (error) {
+          setState(() {
+            buttonText = 'Connection error';
+          });
+        },
+      );
     } catch (e) {
       setState(() {
         buttonText = 'Connection failed';
@@ -99,7 +119,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                  urlTemplate:
+                      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                   subdomains: ['a', 'b', 'c'],
                 ),
               ],
@@ -163,8 +184,11 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               icon: Icon(Icons.chat, size: 28.sp),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.channels, arguments: _zone);
-                
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.channels,
+                  arguments: _zone,
+                );
               },
             ),
             SizedBox(width: 48.w),

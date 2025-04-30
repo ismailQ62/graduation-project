@@ -1,9 +1,11 @@
 class User {
   int? _id;
   String _name;
+  //String last_name;
   String _nationalId;
   String _password;
   String _role;
+  String? _connectedZoneId;
 
   User({
     int? id,
@@ -11,17 +13,21 @@ class User {
     required String nationalId,
     required String password,
     required String role,
+    String? connectedZoneId,
   }) : _id = id,
        _name = name,
        _nationalId = nationalId,
        _password = password,
-       _role = role;
+       _role = role,
+       _connectedZoneId = connectedZoneId;
+       
 
   int? get id => _id;
   String get name => _name;
   String get nationalId => _nationalId;
   String get password => _password;
   String get role => _role;
+  String? get connectedZone => _connectedZoneId; 
 
   set name(String value) {
     if (value.isEmpty || value.length < 3) {
@@ -58,6 +64,13 @@ class User {
     _role = value;
   }
 
+   set connectedZoneId(String? value) {
+    if (value != null && value.isEmpty) {
+      throw ArgumentError("Connected Zone ID cannot be empty");
+    }
+    _connectedZoneId = value;
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': _id,
@@ -65,6 +78,7 @@ class User {
       'nationalId': _nationalId,
       'password': _password,
       'role': _role,
+      'connectedZoneId': _connectedZoneId,
     };
   }
 

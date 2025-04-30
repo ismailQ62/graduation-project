@@ -1,11 +1,13 @@
+import 'package:lorescue/models/user_model.dart';
+
 class AuthService {
-  static String? _currentUserNationalId;
+  static User? _currentUser;
 
-  static void setCurrentUserNationalId(String nationalId) {
-    _currentUserNationalId = nationalId;
-  }
+static void setCurrentUser(User user) {
+  _currentUser = user;
+}
 
-  static String? getCurrentUserNationalId() {
-    return _currentUserNationalId;
-  }
+static User? getCurrentUser() {
+  return _currentUser;
+}
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
+import 'package:lorescue/models/zone_model.dart';
+import 'package:lorescue/services/auth_service.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'dart:convert';
@@ -19,12 +21,21 @@ class _SosChatScreenState extends State<SosChatScreen> {
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic>? _currentUser;
   String _messageType = "SOS";
+  String? _currenZoneId;
+
+  Zone? _receiverZone;
+  List<Zone> _zones = [
+    Zone(id: '1', name: "Zone_1"),
+    Zone(id: '2', name: "Zone_2"),
+    Zone(id: '3', name: "Zone_3"),
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadCurrentUser();
     _loadMessages();
+    _currenZoneId = AuthService.getCurrentUser()?.connectedZone;
 
     _channel.stream.listen((message) async {
       final received = message.toString();
@@ -34,6 +45,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
       final content = jsonMessage["content"] ?? received;
       final timestamp = DateTime.now().toIso8601String();
       final msgType = jsonMessage["type"] ?? "unknown";
+      final receiverZone = jsonMessage["receiverZone"] ?? "unknown";
 
       await _dbService.insertMessage(
         sender: senderId,
@@ -41,7 +53,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         timestamp: timestamp,
         type: msgType,
         channelId: 0,
-        receiverZone: "ALL",
+        receiverZone: receiverZone,
       );
 
       setState(() {
@@ -50,6 +62,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           'text': content,
           'timestamp': timestamp,
           'type': msgType,
+          'receiverZoneId': receiverZone,
         });
       });
     });
@@ -80,15 +93,17 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId = "ZONE_A";
+      String zoneId =
+          _currenZoneId ?? "Zone_3"; // Default zone if not connected
+      String receiverZone = _receiverZone?.name ?? "ALL";
 
-      List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
+      /* List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
         _messageType,
       );
       String channelId =
           dbMessages.isNotEmpty
               ? dbMessages.first['channelId'].toString()
-              : "1";
+              : "1"; */
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -99,9 +114,9 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "time":
             "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
         "content": content,
-        "channelID": channelId,
+        "channelID": "0",
         "zoneID": zoneId,
-        "receiverZone": "ALL",
+        "receiverZone": receiverZone,
         "gps": "32.1234,36.5678",
       };
 
@@ -114,7 +129,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           timestamp: now.toIso8601String(),
           type: _messageType,
           channelId: 0,
-          receiverZone: "ALL",
+          receiverZone: receiverZone,
         );
 
         setState(() {
@@ -123,6 +138,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             'text': content,
             'timestamp': now.toIso8601String(),
             'type': _messageType,
+            'receiverZoneId': receiverZone,
           });
         });
 
@@ -204,18 +220,20 @@ class _SosChatScreenState extends State<SosChatScreen> {
                   horizontal: 12.0,
                   vertical: 4,
                 ),
-                child: DropdownButton<String>(
-                  value: _messageType,
+                child: DropdownButton<Zone>(
+                  hint: const Text("Select Zone"),
+                  value: _receiverZone,
+                  isExpanded: true,
                   items:
-                      ["SOS", "chat"].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text("Type: $value"),
+                      _zones.map((Zone zone) {
+                        return DropdownMenuItem<Zone>(
+                          value: zone,
+                          child: Text("Zone: ${zone.name}"),
                         );
                       }).toList(),
-                  onChanged: (newValue) {
+                  onChanged: (Zone? newZone) {
                     setState(() {
-                      _messageType = newValue!;
+                      _receiverZone = newZone!;
                     });
                   },
                 ),

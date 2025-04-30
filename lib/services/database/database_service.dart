@@ -32,9 +32,11 @@ class DatabaseService {
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
+      lastName TEXT,
       nationalId TEXT NOT NULL,
       password TEXT NOT NULL,
-      role TEXT NOT NULL
+      role TEXT NOT NULL,
+      connected_zone_id TEXT
     )
   ''');
 
@@ -71,13 +73,23 @@ class DatabaseService {
     }
   }
 
+  Future<void> updateUserZone(String userId, String zoneId) async {
+    final db = await database;
+    await db.update(
+      'users',
+      {'connected_zone_id': zoneId},
+      where: 'user_id = ?',
+      whereArgs: [userId],
+    );
+  }
+
   Future<void> insertMessage({
     required String sender,
     required String text,
     required String timestamp,
     required String type,
     required String receiverZone,
-    required int channelId
+    required int channelId,
   }) async {
     final db = await database;
     await db.insert('messages', {
@@ -92,7 +104,12 @@ class DatabaseService {
 
   Future<List<Map<String, dynamic>>> getMessages(String type) async {
     final db = await database;
-    return await db.query('messages', where: 'type = ?' , whereArgs: [type] ,orderBy: 'timestamp DESC');
+    return await db.query(
+      'messages',
+      where: 'type = ?',
+      whereArgs: [type],
+      orderBy: 'timestamp DESC',
+    );
   }
 
   Future<void> deleteOldMessages() async {
@@ -111,17 +128,18 @@ class DatabaseService {
     return await db.query('users');
   }
 
-Future<List<Map<String, dynamic>>> getMessagesForChannel(String type, int channelId) async {
-  final db = await database;
-  return await db.query(
-    'messages',
-    where: 'type = ? AND channelId = ?',
-    whereArgs: [type, channelId],
-    orderBy: 'timestamp DESC',
-  );
-}
-
-
+  Future<List<Map<String, dynamic>>> getMessagesForChannel(
+    String type,
+    int channelId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'messages',
+      where: 'type = ? AND channelId = ?',
+      whereArgs: [type, channelId],
+      orderBy: 'timestamp DESC',
+    );
+  }
 
   // Future<void> deleteUser(int id) async {
 }

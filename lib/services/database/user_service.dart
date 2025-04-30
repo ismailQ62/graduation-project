@@ -19,7 +19,7 @@ class UserService {
     return 'Registration successful!';
   }
 
-  Future<String?> loginUser(String nationalId, String password) async {
+  Future<User?> loginUser(String nationalId, String password) async {
     final db = await _dbService.database;
     final users = await db.query(
       'users',
@@ -27,7 +27,14 @@ class UserService {
       whereArgs: [nationalId, password],
     );
     if (users.isNotEmpty) {
-      return users.first['role'] as String?;
+      return User(
+        id: users.first['id'] as int?,
+        name: users.first['name'] as String,
+        nationalId: users.first['nationalId'] as String,
+        password: users.first['password'] as String,
+        role: users.first['role'] as String,
+        connectedZoneId: users.first['connectedZoneId'] as String?,
+      );
     }
     return null;
   }
@@ -42,16 +49,28 @@ class UserService {
     return result.isNotEmpty;
   }
 
+  Future<void> updateUserZoneId(String nationalId, String zoneId) async {
+    final db = await _dbService.database;
+    await db.update(
+      'users',
+      {'connectedZoneId': zoneId},
+      where: 'nationalId = ?',
+      whereArgs: [nationalId],
+    );
+  }
+
   Future<List<User>> getAllUsers() async {
     final db = await _dbService.database;
     final List<Map<String, dynamic>> maps = await db.query('users');
 
     return List.generate(maps.length, (i) {
       return User(
-        name: maps[i]['name'],
-        nationalId: maps[i]['nationalId'],
-        password: maps[i]['password'],
-        role: maps[i]['role'],
+        id: maps[i]['id'] as int?,
+        name: maps[i]['name'] as String,
+        nationalId: maps[i]['nationalId'] as String,
+        password: maps[i]['password'] as String,
+        role: maps[i]['role'] as String,
+        connectedZoneId: maps[i]['connectedZoneId'] as String?,
       );
     });
   }

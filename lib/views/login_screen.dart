@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
@@ -23,26 +24,27 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    String? userRole = await _userService.loginUser(
+    User? user = await _userService.loginUser(
       _nationalIdController.text,
       _passwordController.text,
     );
 
-    if (userRole != null) {
+    if (user != null) {
       // Set the current user national ID
-      AuthService.setCurrentUserNationalId(_nationalIdController.text);
+      AuthService.setCurrentUser(user);
+      user.connectedZoneId = "Zone_3"; // Demo for connected zone
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Login successful! Role: $userRole"),
+          content: Text("Login successful! Welcome, ${user.name} Role: ${user.role} Zone: ${user.connectedZone}"),
           backgroundColor: Colors.green,
         ),
       );
 
       // Redirect based on role
-      if (userRole == 'Admin') {
+      if (user.role == 'Admin') {
         Navigator.pushNamed(context, AppRoutes.homeAdmin);
-      } else if (userRole == 'Responder') {
+      } else if (user.role == 'Responder') {
         Navigator.pushNamed(context, AppRoutes.homeResponder);
       } else {
         Navigator.pushNamed(context, AppRoutes.home);

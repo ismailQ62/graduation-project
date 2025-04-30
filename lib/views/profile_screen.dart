@@ -22,7 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final nationalId = AuthService.getCurrentUserNationalId();
+      final nationalId = AuthService.getCurrentUser()?.nationalId; // Get the current user's national ID
       if (nationalId == null) {
         setState(() {
           _isLoading = false;
