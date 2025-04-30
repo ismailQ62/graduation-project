@@ -101,7 +101,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "content": content,
         "channelID": channelId,
         "zoneID": zoneId,
-        "receiver": "ALL",
+        "receiverZone": "ALL",
         "gps": "32.1234,36.5678",
       };
 

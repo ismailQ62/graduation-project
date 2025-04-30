@@ -1,149 +1,160 @@
 import 'package:flutter/material.dart';
+import 'package:lorescue/services/database/database_service.dart';
+import 'package:lorescue/services/auth_service.dart'; // Add this import
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final DatabaseService _dbService = DatabaseService();
+  Map<String, dynamic>? _userData;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final nationalId = AuthService.getCurrentUserNationalId();
+      if (nationalId == null) {
+        setState(() {
+          _isLoading = false;
+          _userData = null;
+        });
+        return;
+      }
+      final db = await _dbService.database;
+      final users = await db.query(
+        'users',
+        where: 'nationalId = ?',
+        whereArgs: [nationalId],
+        limit: 1,
+      );
+      setState(() {
+        _userData = users.isNotEmpty ? users.first : null;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading user data: $e');
+      setState(() {
+        _isLoading = false;
+        _userData = null;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_userData == null) {
+      return const Scaffold(
+        body: Center(child: Text('No user data found')),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Profile'),
+        title: const Text('Profile'),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(height: 20),
-            // Circular Profile Picture
+            const SizedBox(height: 20),
             Center(
               child: CircleAvatar(
                 radius: 60,
-                backgroundImage: AssetImage('assets/profile_picture.jpg'), // Add your image to assets
+                backgroundImage: AssetImage('assets/profile_picture.jpg'),
               ),
             ),
-            SizedBox(height: 20),
-            // Name
+            const SizedBox(height: 20),
             Center(
               child: Text(
-                'John Doe',
-                style: TextStyle(
+                '${_userData!['firstName']} ${_userData!['lastName']}',
+                style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-            SizedBox(height: 10),
-            // Email
+            const SizedBox(height: 10),
             Center(
               child: Text(
-                'johndoe@example.com',
-                style: TextStyle(
+                _userData!['email'] ?? 'No email provided',
+                style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
                 ),
               ),
-            ),SizedBox(height: 2),
-            /*Text('First Name',
-                       style: TextStyle(
-                            fontSize: 16,
-                            color: const Color.fromRGBO(56, 75, 112, 1),)),
-            SizedBox(height: 20),*/
-            // Additional Information
+            ),
+            const SizedBox(height: 20),
             Column(
               children: [
-                // First Name and Last Name
-                Row( 
-                  children: [
-                    
-                  //SizedBox(height: 80),
-                    Expanded(
-                      child: RectangularField(
-                       label: 'First Name',
-                        value: 'Jane',
-                  
-                        
-                      ),
-                    ),
-                    SizedBox(width: 16),
-
-                    
-                    Expanded(
-                      child: RectangularField(
-                       label: 'Last Name',
-                        value: 'Smith',
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                // National ID
-                RectangularField(
-                 label: 'National ID',
-                  value: '2000750515',
-                ),
-                SizedBox(height: 20),
-                // Phone Number
-                RectangularField(
-                label: 'Phone Number',
-                  value: '+1 234 567 890',
-                ),
-                SizedBox(height: 20),
-                // Blood Type and Role
                 Row(
                   children: [
                     Expanded(
                       child: RectangularField(
-                      label: 'Blood Type',
-                        value: 'O+',
+                        label: 'First Name',
+                        value: _userData!['firstName'] ?? 'N/A',
                       ),
                     ),
-                    SizedBox(width: 16),
+                    const SizedBox(width: 16),
                     Expanded(
                       child: RectangularField(
-                      label: 'Role',
-                        value: 'Individual',
+                        label: 'Last Name',
+                        value: _userData!['lastName'] ?? 'N/A',
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
-                // Address
+                const SizedBox(height: 20),
                 RectangularField(
-                label: 'Address',
-                  value: '123 Main St, New York, USA',
-                   
+                  label: 'National ID',
+                  value: _userData!['nationalId'] ?? 'N/A',
                 ),
-                SizedBox(height: 20),
-                // Edit and Remove Buttons
+                const SizedBox(height: 20),
+                RectangularField(
+                  label: 'Phone Number',
+                  value: _userData!['phoneNumber'] ?? 'N/A',
+                ),
+                const SizedBox(height: 20),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        // Edit action
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(56, 75, 112, 1),
-                        minimumSize: Size(150,36),
+                    Expanded(
+                      child: RectangularField(
+                        label: 'Blood Type',
+                        value: _userData!['bloodType'] ?? 'N/A',
                       ),
-                      child: Text('Edit',style:TextStyle(color: Color.fromRGBO(252, 250, 238, 1)),),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Remove action
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromRGBO(148, 0, 31, 1),
-                        minimumSize: Size(150,36),
-                        
-                      ),
-                      child: Text('Remove',style:TextStyle(color: Color.fromRGBO(252, 250, 238, 1))
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: RectangularField(
+                        label: 'Role',
+                        value: _userData!['role'] ?? 'N/A',
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 20),
+                RectangularField(
+                  label: 'Address',
+                  value: _userData!['address'] ?? 'N/A',
+                ),
+                // ... rest of your buttons code
               ],
             ),
           ],

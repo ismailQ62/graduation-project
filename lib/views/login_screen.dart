@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/user_service.dart';
+
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -27,6 +29,9 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     if (userRole != null) {
+      // Set the current user national ID
+      AuthService.setCurrentUserNationalId(_nationalIdController.text);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Login successful! Role: $userRole"),

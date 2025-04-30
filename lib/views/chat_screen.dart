@@ -32,8 +32,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Zone? _receiverZone;
 
   List<Zone> _zones = [
-    Zone(id: '1', name: "Zone1"),
-    Zone(id: '2', name: "TeslaZone"),
+    Zone(id: '1', name: "Zone_1"),
+    Zone(id: '2', name: "Zone_2"),
   ];
 
   @override
