@@ -94,7 +94,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
       String zoneId =
-          _currenZoneId ?? "Zone_3"; // Default zone if not connected
+          _currenZoneId ?? "Zone_1"; // Default zone if not connected
       String receiverZone = _receiverZone?.name ?? "ALL";
 
       /* List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(

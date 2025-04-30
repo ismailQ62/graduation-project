@@ -36,7 +36,7 @@ class DatabaseService {
       nationalId TEXT NOT NULL,
       password TEXT NOT NULL,
       role TEXT NOT NULL,
-      connected_zone_id TEXT
+      connectedZoneId TEXT
     )
   ''');
 
@@ -60,6 +60,7 @@ class DatabaseService {
       name TEXT NOT NULL
     )
   ''');
+  //  await db.execute(''' ALTER TABLE users ADD COLUMN connectedZoneId TEXT;''');
 
     // Insert default channels with fixed IDs
     final existing = await db.query('channels');

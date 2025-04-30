@@ -58,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     bool isConnectedToWifi = await ConnectedToWifi();
-    if (!isConnectedToWifi) { //(!) to be added
+    if (isConnectedToWifi) { //(!) to be added
       // Show a dialog if not connected to Wi-Fi
       showDialog(
         context: context,
@@ -147,6 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       nationalId: _nationalIdController.text,
       password: _passwordController.text,
       role: _selectedRole!,
+      connectedZoneId: "0",
     );
 
     await _userService.registerUser(newUser);
@@ -157,6 +158,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       "national_id": _nationalIdController.text,
       "password": _passwordController.text,
       "role": _selectedRole,
+      "connectedZoneId": "0",
     };
 
     ScaffoldMessenger.of(context).showSnackBar(

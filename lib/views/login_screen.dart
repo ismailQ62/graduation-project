@@ -32,7 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user != null) {
       // Set the current user national ID
       AuthService.setCurrentUser(user);
-      user.connectedZoneId = "Zone_3"; // Demo for connected zone
+      user.connectedZone ; // Demo for connected zone
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
