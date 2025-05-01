@@ -18,7 +18,7 @@ class RegisterScreen extends StatefulWidget {
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-Future<bool> ConnectedToWifi() async {
+/* Future<bool> ConnectedToWifi() async {
   final info = NetworkInfo();
 
   String? wifiName = await info.getWifiName();
@@ -28,6 +28,13 @@ Future<bool> ConnectedToWifi() async {
   } else {
     return false;
   }
+} */
+
+Future<bool> ConnectedToWifi() async {
+  final info = NetworkInfo();
+  final ssid = await info.getWifiName();
+
+  return ssid != null && ssid.isNotEmpty;
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -58,7 +65,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     bool isConnectedToWifi = await ConnectedToWifi();
-    if (isConnectedToWifi) { //(!) to be added
+    if (!isConnectedToWifi) {
+      //(!) to be added
       // Show a dialog if not connected to Wi-Fi
       showDialog(
         context: context,

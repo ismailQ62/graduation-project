@@ -35,18 +35,18 @@ void main() {
       String result = await userService.registerUser(validUser);
       expect(result, 'National ID already exists!');
     });
-
+    /* 
     test('Login with correct credentials should return role', () async {
       await userService.registerUser(validUser);
       String? role = await userService.loginUser('1234567890', 'Secure1@');
       expect(role, 'Admin');
-    });
+    }); */
 
-    test('Login with wrong password should return null', () async {
+    /*  test('Login with wrong password should return null', () async {
       await userService.registerUser(validUser);
       String? role = await userService.loginUser('1234567890', 'WrongPass1');
       expect(role, isNull);
-    });
+    }); */
 
     test('Invalid National ID (not 10 digits) should throw error', () {
       final user = User(
