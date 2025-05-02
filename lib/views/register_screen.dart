@@ -45,16 +45,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nationalIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
-      TextEditingController();
+   TextEditingController();
 
   String? _selectedRole;
   final List<String> roles = ["Individual", "Admin", "Responder"];
-  late IOWebSocketChannel _channel;
+  final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
   @override
   void initState() {
     super.initState();
 
-    _channel = IOWebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
+   // _channel = IOWebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
+    
+    
+
+
+
   }
 
   @override
@@ -65,7 +70,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     bool isConnectedToWifi = await ConnectedToWifi();
-    if (!isConnectedToWifi) {
+    if (isConnectedToWifi) {
       //(!) to be added
       // Show a dialog if not connected to Wi-Fi
       showDialog(
