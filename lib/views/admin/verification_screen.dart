@@ -1,131 +1,196 @@
-import 'dart:io';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
 
   @override
-  _VerificationScreenState createState() => _VerificationScreenState();
+  State<VerificationScreen> createState() => _VerificationScreenState();
 }
 
 class _VerificationScreenState extends State<VerificationScreen> {
-  File? _selectedImage;
-  bool _isLoading = false;
+  final ValueNotifier<List<Map<String, dynamic>>> pendingResponders =
+      ValueNotifier([]);
+  late WebSocketChannel channel;
 
-  Future<void> _pickImage() async {
-    final pickedFile = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
+  @override
+  void initState() {
+    super.initState();
+
+    channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+
+    // ✅ Uncomment below for testing UI with dummy data
+    /*
+    final dummyImage = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
     );
+    pendingResponders.value = [
+      {'id': 'R12345', 'name': 'Ali Hammoudeh', 'imageBytes': dummyImage},
+      {'id': 'R67890', 'name': 'Sara Qasem', 'imageBytes': dummyImage},
+    ];
+    */
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
-    }
+    channel.stream.listen((message) {
+      final data = jsonDecode(message);
+      if (data['type'] == 'verification') {
+        final imageBytes = base64Decode(data['image']);
+        pendingResponders.value = List.from(pendingResponders.value)..add({
+          'id': data['senderID'] ?? 'R000',
+          'name': data['username'] ?? 'Responder',
+          'imageBytes': imageBytes,
+        });
+      }
+    });
   }
 
-  Future<void> _verify() async {
-    if (_selectedImage == null) return;
+  @override
+  void dispose() {
+    channel.sink.close();
+    super.dispose();
+  }
 
-    setState(() => _isLoading = true);
-
-    await Future.delayed(
-      const Duration(seconds: 2),
-    ); // simulate verification delay
-
-    setState(() => _isLoading = false);
+  void _approveUser(BuildContext context, Map<String, dynamic> user) {
+    final message = jsonEncode({
+      'type': 'verify',
+      'id': user['id'],
+      'status': 'approved',
+    });
+    channel.sink.add(message);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text("Verified successfully!"),
+        content: Text("${user['name']} approved"),
         backgroundColor: Colors.green,
       ),
     );
 
-    Navigator.pop(context); // go back
+    pendingResponders.value = List.from(pendingResponders.value)..remove(user);
+  }
+
+  void _rejectUser(BuildContext context, Map<String, dynamic> user) {
+    final message = jsonEncode({
+      'type': 'verify',
+      'id': user['id'],
+      'status': 'rejected',
+    });
+    channel.sink.add(message);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("${user['name']} rejected"),
+        backgroundColor: Colors.red,
+      ),
+    );
+
+    pendingResponders.value = List.from(pendingResponders.value)..remove(user);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Pending Verifications'),
+        backgroundColor: Colors.deepPurple,
+        centerTitle: true,
+      ),
       body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24.w),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/verification_icon.png',
-              width: 100.w,
-              height: 100.h,
-            ),
-
-            SizedBox(height: 20.h),
-
-            Text(
-              "Verification",
-              style: TextStyle(
-                fontSize: 22.sp,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
-              ),
-            ),
-
-            SizedBox(height: 5.h),
-
-            Text(
-              "Please Upload Your Credential",
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey),
-            ),
-
-            SizedBox(height: 30.h),
-
-            ElevatedButton.icon(
-              onPressed: _pickImage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade900,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r),
+        padding: EdgeInsets.all(16.w),
+        child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+          valueListenable: pendingResponders,
+          builder: (context, list, _) {
+            if (list.isEmpty) {
+              return Center(
+                child: Text(
+                  'No pending verifications.',
+                  style: TextStyle(fontSize: 18.sp, color: Colors.grey),
                 ),
-                padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 20.w),
-              ),
-              icon: const Icon(Icons.cloud_upload, color: Colors.white),
-              label: Text(
-                "Upload",
-                style: TextStyle(fontSize: 16.sp, color: Colors.white),
-              ),
-            ),
+              );
+            }
 
-            SizedBox(height: 20.h),
-
-            _selectedImage != null
-                ? Column(
-                  children: [
-                    Image.file(_selectedImage!, width: 200.w, height: 200.h),
-                    SizedBox(height: 10.h),
-                  ],
-                )
-                : const SizedBox.shrink(),
-
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                  onPressed: _verify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade900,
-                    minimumSize: Size(double.infinity, 50.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10.r),
+            return ListView.builder(
+              itemCount: list.length,
+              itemBuilder: (context, index) {
+                final user = list[index];
+                return Card(
+                  margin: EdgeInsets.symmetric(vertical: 10.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12.r),
+                  ),
+                  elevation: 3,
+                  child: Padding(
+                    padding: EdgeInsets.all(16.w),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Name: ${user['name']}",
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          "ID: ${user['id']}",
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        SizedBox(height: 12.h),
+                        user['imageBytes'] != null
+                            ? ClipRRect(
+                              borderRadius: BorderRadius.circular(10.r),
+                              child: Image.memory(
+                                user['imageBytes'] as Uint8List,
+                                width: double.infinity,
+                                height: 200.h,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                            : Container(
+                              width: double.infinity,
+                              height: 200.h,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10.r),
+                                color: Colors.grey.shade200,
+                              ),
+                              child: Text(
+                                "No image uploaded",
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ),
+                        SizedBox(height: 16.h),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => _approveUser(context, user),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.green,
+                              ),
+                              child: const Text("Approve"),
+                            ),
+                            TextButton(
+                              onPressed: () => _rejectUser(context, user),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                              child: const Text("Reject"),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    "Verify",
-                    style: TextStyle(fontSize: 18.sp, color: Colors.white),
-                  ),
-                ),
-          ],
+                );
+              },
+            );
+          },
         ),
       ),
     );

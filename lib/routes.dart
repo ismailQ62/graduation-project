@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lorescue/views/Responder/upload_verification_screen.dart';
 import 'package:lorescue/views/admin/home_admin_screen.dart';
 import 'package:lorescue/views/admin/manage_users_screen.dart';
 import 'package:lorescue/views/admin/mange_channel_screen.dart';
@@ -31,6 +32,7 @@ class AppRoutes {
   static const String homeResponder = "/homeResponder";
   static const String sosChat = "/sosChat";
   static const String manageUsers = '/manageUsers';
+  static const String uploadVerification = '/uploadVerification';
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
@@ -70,6 +72,10 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const HomeAdminScreen());
       case manageUsers:
         return MaterialPageRoute(builder: (_) => const ManageUsersScreen());
+      case uploadVerification:
+        return MaterialPageRoute(
+          builder: (_) => const UploadVerificationScreen(),
+        );
 
       default:
         return MaterialPageRoute(

@@ -12,16 +12,14 @@ class DatabaseService {
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'lorescue.db');
-
-    print("Database Path: $path");
-
     return await openDatabase(
       path,
-      version: 3,
+      version: 6, // Incremented version
       onCreate: (db, version) async {
         await _createTables(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
+        await db.execute("DROP TABLE IF EXISTS users");
         await _createTables(db);
       },
     );
@@ -29,40 +27,41 @@ class DatabaseService {
 
   Future<void> _createTables(Database db) async {
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      lastName TEXT,
-      nationalId TEXT NOT NULL,
-      password TEXT NOT NULL,
-      role TEXT NOT NULL,
-      connectedZoneId TEXT
-    )
-  ''');
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        nationalId TEXT NOT NULL,
+        phoneNumber TEXT,
+        address TEXT,
+        bloodType TEXT,
+        role TEXT,
+        password TEXT,
+        connectedZoneId TEXT,
+        credential TEXT,
+        verified INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
 
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      senderId TEXT NOT NULL,
-      receiverId TEXT NOT NULL DEFAULT '',
-      content TEXT NOT NULL,
-      timestamp TEXT NOT NULL,
-      isRead INTEGER NOT NULL DEFAULT 0,
-      channelId INTEGER NOT NULL DEFAULT 1,
-      type TEXT NOT NULL
-    )
-  ''');
+      CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        senderId TEXT NOT NULL,
+        receiverId TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL,
+        timestamp TEXT NOT NULL,
+        isRead INTEGER NOT NULL DEFAULT 0,
+        channelId INTEGER NOT NULL DEFAULT 1,
+        type TEXT NOT NULL
+      )
+    ''');
 
-    // NOTE: no AUTOINCREMENT to allow manual ID for static channels
     await db.execute('''
-    CREATE TABLE IF NOT EXISTS channels (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL
-    )
-  ''');
-  //  await db.execute(''' ALTER TABLE users ADD COLUMN connectedZoneId TEXT;''');
+      CREATE TABLE IF NOT EXISTS channels (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL
+      )
+    ''');
 
-    // Insert default channels with fixed IDs
     final existing = await db.query('channels');
     final existingIds = existing.map((e) => e['id']).toList();
 
@@ -72,16 +71,6 @@ class DatabaseService {
     if (!existingIds.contains(2)) {
       await db.insert('channels', {'id': 2, 'name': 'News Channel'});
     }
-  }
-
-  Future<void> updateUserZone(String userId, String zoneId) async {
-    final db = await database;
-    await db.update(
-      'users',
-      {'connected_zone_id': zoneId},
-      where: 'user_id = ?',
-      whereArgs: [userId],
-    );
   }
 
   Future<void> insertMessage({
@@ -113,6 +102,19 @@ class DatabaseService {
     );
   }
 
+  Future<List<Map<String, dynamic>>> getMessagesForChannel(
+    String type,
+    int channelId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'messages',
+      where: 'type = ? AND channelId = ?',
+      whereArgs: [type, channelId],
+      orderBy: 'timestamp DESC',
+    );
+  }
+
   Future<void> deleteOldMessages() async {
     final db = await database;
     int twentyFourHoursAgo =
@@ -129,18 +131,8 @@ class DatabaseService {
     return await db.query('users');
   }
 
-  Future<List<Map<String, dynamic>>> getMessagesForChannel(
-    String type,
-    int channelId,
-  ) async {
+  Future<void> deleteUser(String nationalId) async {
     final db = await database;
-    return await db.query(
-      'messages',
-      where: 'type = ? AND channelId = ?',
-      whereArgs: [type, channelId],
-      orderBy: 'timestamp DESC',
-    );
+    await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
   }
-
-  // Future<void> deleteUser(int id) async {
 }

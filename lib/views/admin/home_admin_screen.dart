@@ -14,13 +14,13 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      body: Center(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.w),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
+      body: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 40.h),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Text(
                 "Welcome, Admin 🛠️",
                 style: TextStyle(
                   fontSize: 26.sp,
@@ -28,23 +28,34 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                   color: Colors.deepPurple,
                 ),
               ),
-              /* SizedBox(height: 10.h),
-              Text(
-                "You have full control over the system. Manage users, zones, and channels efficiently.",
-                style: TextStyle(fontSize: 16.sp, color: Colors.black54),
-                textAlign: TextAlign.center,
-              ), */
-            ],
-          ),
+            ),
+            SizedBox(height: 30.h),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                crossAxisSpacing: 20.w,
+                mainAxisSpacing: 20.h,
+                children: [
+                  _buildCategoryBox(
+                    context,
+                    icon: Icons.verified_user,
+                    label: "Verification",
+                    onTap:
+                        () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.verification,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.pushNamed(
-            context,
-            AppRoutes.manageUsers,
-          ); // Navigate to user management
+          Navigator.pushNamed(context, AppRoutes.manageUsers);
         },
         backgroundColor: Colors.deepPurple,
         child: const Icon(Icons.supervisor_account, color: Colors.white),
@@ -81,6 +92,40 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
               onPressed: () {
                 Navigator.pushNamed(context, AppRoutes.profile);
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCategoryBox(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16.r),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.deepPurple.shade50,
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: Colors.deepPurple, width: 2),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 48.sp, color: Colors.deepPurple),
+            SizedBox(height: 10.h),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 16.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
             ),
           ],
         ),

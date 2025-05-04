@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/services/database/database_service.dart';
-import 'package:lorescue/services/auth_service.dart'; // Add this import
+import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/views/edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,7 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final nationalId = AuthService.getCurrentUser()?.nationalId; // Get the current user's national ID
+      final nationalId = AuthService.getCurrentUser()?.nationalId;
       if (nationalId == null) {
         setState(() {
           _isLoading = false;
@@ -50,25 +51,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text("Confirm Deletion"),
+            content: const Text(
+              "Are you sure you want to delete your account?",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Delete"),
+              ),
+            ],
+          ),
+    );
+
+    if (confirm == true) {
+      await _dbService.deleteUser(_userData!['nationalId']);
+      AuthService.logout();
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_userData == null) {
-      return const Scaffold(
-        body: Center(child: Text('No user data found')),
-      );
+      return const Scaffold(body: Center(child: Text('No user data found')));
     }
 
+    // Dynamically split full name into first and last
+    final fullName = _userData!['name'] ?? '';
+    final nameParts = fullName.split(' ');
+    final firstName = nameParts.isNotEmpty ? nameParts[0] : 'N/A';
+    final lastName =
+        nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'N/A';
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Profile'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('Profile'), centerTitle: true),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -84,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                '${_userData!['firstName']} ${_userData!['lastName']}',
+                fullName,
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -92,15 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            Center(
-              child: Text(
-                _userData!['email'] ?? 'No email provided',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-            ),
+
             const SizedBox(height: 20),
             Column(
               children: [
@@ -109,14 +131,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Expanded(
                       child: RectangularField(
                         label: 'First Name',
-                        value: _userData!['firstName'] ?? 'N/A',
+                        value: firstName,
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: RectangularField(
                         label: 'Last Name',
-                        value: _userData!['lastName'] ?? 'N/A',
+                        value: lastName,
                       ),
                     ),
                   ],
@@ -154,7 +176,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: 'Address',
                   value: _userData!['address'] ?? 'N/A',
                 ),
-                // ... rest of your buttons code
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _confirmDelete,
+                        icon: const Icon(Icons.delete),
+                        label: const Text("Delete Account"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final updated = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder:
+                                (context) =>
+                                    EditProfileScreen(userData: _userData!),
+                          ),
+                        );
+                        if (updated == true) {
+                          _loadUserData();
+                        }
+                      },
+                      child: const Text('Edit Profile'),
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -164,44 +217,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Custom Widget for Rectangular Fields
 class RectangularField extends StatelessWidget {
   final String label;
   final String value;
 
-  const RectangularField({
-   required this.label,
-    required this.value,
-    Key? key,
-  }) : super(key: key);
+  const RectangularField({required this.label, required this.value, Key? key})
+    : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity, // Full width
-      padding: EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(45, 37, 95, 255).withOpacity(0.2), // Light blue background
-        borderRadius: BorderRadius.circular(10), // Rounded corners
+        color: const Color.fromARGB(45, 37, 95, 255).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 14,
-              color: const Color.fromRGBO(56, 75, 112, 1),
+              color: Color.fromRGBO(56, 75, 112, 1),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              
-              color: const Color.fromRGBO(80, 118, 135, 1),
+              color: Color.fromRGBO(80, 118, 135, 1),
             ),
           ),
         ],

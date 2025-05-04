@@ -10,15 +10,16 @@ import 'package:lorescue/models/channel_model.dart';
 class ChatScreen extends StatefulWidget {
   final Channel channel;
   final Zone zone;
-  ChatScreen({Key? key, required this.channel, required this.zone}): super(key: key); 
+  ChatScreen({Key? key, required this.channel, required this.zone})
+    : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  late final int _channelId; 
-  late final String _zoneId; 
+  late final int _channelId;
+  late final String _zoneId;
 
   final TextEditingController _controller = TextEditingController();
   final DatabaseService _dbService = DatabaseService();
@@ -62,7 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
         timestamp: timestamp,
         type: _messageType,
         channelId: _channelId,
-        receiverZone : receiverZone,
+        receiverZone: receiverZone,
       );
 
       setState(() {
@@ -83,14 +84,17 @@ class _ChatScreenState extends State<ChatScreen> {
     List<Map<String, dynamic>> users = await _dbService.getUsers();
     if (users.isNotEmpty) {
       setState(() {
-        _currentUser = users.first; 
+        _currentUser = users.first;
       });
     }
   }
 
   Future<void> _loadMessages() async {
     List<Map<String, dynamic>> dbMessages = await _dbService
-        .getMessagesForChannel(_messageType, _channelId); // retreive by channelId, receiverZone
+        .getMessagesForChannel(
+          _messageType,
+          _channelId,
+        ); // retreive by channelId, receiverZone
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
       channelmessages = _messages;
@@ -100,7 +104,9 @@ class _ChatScreenState extends State<ChatScreen> {
   void _loadMessageForChannel(int channelId) {
     setState(() {
       channelmessages =
-          _messages.where((msg) => msg['channelId'] == channelId).toList(); // and receiverZone
+          _messages
+              .where((msg) => msg['channelId'] == channelId)
+              .toList(); // and receiverZone
     });
   }
 
@@ -111,8 +117,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId = _zoneId; 
-      String receiverZone = _receiverZone?.name ?? "ALL"; 
+      String zoneId = _zoneId;
+      String receiverZone = _receiverZone?.name ?? "ALL";
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -123,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
         "time":
             "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
         "content": content,
-        "channelID": _channelId.toString(), 
+        "channelID": _channelId.toString(),
         "zoneID": zoneId,
         "receiverZone": receiverZone,
         "gps": "32.1234,36.5678", // Replace with actual GPS
@@ -137,8 +143,8 @@ class _ChatScreenState extends State<ChatScreen> {
           text: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
-          channelId: _channelId, 
-          receiverZone: receiverZone, 
+          channelId: _channelId,
+          receiverZone: receiverZone,
         );
 
         setState(() {
@@ -206,10 +212,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 final content =
                     message['text'] ?? message['content'] ?? 'No content';
                 final timestamp = message['timestamp'];
-                final receiverZoneId = message['receiverZoneId'] ?? message['receiverZone'] ?? 'ALL';
+                final receiverZoneId =
+                    message['receiverZoneId'] ??
+                    message['receiverZone'] ??
+                    'ALL';
 
                 return ListTile(
-                  title: Text('Sender: $senderId\nMessage: $content \nZone: $receiverZoneId'),
+                  title: Text(
+                    'Sender: $senderId\nMessage: $content \nZone: $receiverZoneId',
+                  ),
                   subtitle: Text('Sent at: $timestamp'),
                 );
               },

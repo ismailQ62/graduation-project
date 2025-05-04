@@ -55,6 +55,7 @@ dependencies:
   connectivity_plus: ^6.1.4
   
   network_info_plus: ^6.1.4
+  audioplayers: ^6.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -74,3 +75,4 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/verification_icon.png
+    
