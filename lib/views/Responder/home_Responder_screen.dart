@@ -9,6 +9,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'dart:convert';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 
 class HomeResponderScreen extends StatefulWidget {
   const HomeResponderScreen({super.key});
@@ -23,6 +24,10 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   WebSocketChannel? _channel;
   Zone? _receiverZone;
   String? _currentZoneId;
+  
+  // try this singelton instance of WebSocketService
+  //final channel = WebSocketService().channel;
+  //channel.sink.add("your message");
 
   List<Zone> _zones = [
     Zone(id: '1', name: "Zone_1"),
