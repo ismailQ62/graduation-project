@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/services/database/user_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -56,35 +60,66 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void connectToWebSocket() {
     try {
-      channel = WebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
+      final channel = WebSocketService().channel;
 
-      channel!.stream.listen(
+      channel.stream.listen(
         (message) async {
-          setState(() {
-            _zone.id = message;
-            buttonText = 'Connected to Zone: ${_zone.id}';
-          });
-          final user = AuthService.getCurrentUser();
-          if (user != null) {
-            user.connectedZoneId = _zone.id;
-            AuthService.setCurrentUser(user); // Update local cache
+          try {
+            final decoded = jsonDecode(message);
 
-            await UserService().updateUserZoneId(
-              user.nationalId,
-              _zone.id,
-            ); // Update DB
+            if (decoded is Map<String, dynamic>) {
+              final String type = decoded['type'] ?? '';
+
+              if (type == 'Alert') {
+                // Show a local notification for the alert
+                NotificationController.showNotification(
+                  title: '🚨 Incoming Alert',
+                  body: decoded['content'] ?? 'No message',
+                  sound: 'emergency_alert',
+                  id: 2,
+                );
+                 setState(() {
+                //  _zone.id = decoded['zoneId'];
+                  buttonText = decoded['content'] ?? 'Alert received';
+                });
+
+                print("Received alert from ESP32: ${decoded['content']}");
+              } else if (type == 'NetworkInfo') {
+                // Example of another type of message
+                setState(() {
+                  _zone.id = decoded['zoneId'];
+                  buttonText = 'Connected to Zone: ${_zone.id}';
+                });
+
+                final user = AuthService.getCurrentUser();
+                if (user != null) {
+                  user.connectedZoneId = _zone.id;
+                  AuthService.setCurrentUser(user);
+                  await UserService().updateUserZoneId(
+                    user.nationalId,
+                    _zone.id,
+                  );
+                }
+              }
+            } else if (decoded is String) {
+              // In case ESP32 just sends a plain string
+              setState(() {
+                _zone.id = decoded;
+                buttonText = 'Connected to Zone: ${_zone.id}';
+              });
+            }
+          } catch (e) {
+            print("Error parsing WebSocket message: $e");
           }
         },
         onError: (error) {
-          setState(() {
-            buttonText = 'Connection error';
-          });
+          setState(() => buttonText = 'Connection error');
+          print("WebSocket error: $error");
         },
       );
     } catch (e) {
-      setState(() {
-        buttonText = 'Connection failed';
-      });
+      setState(() => buttonText = 'Connection failed');
+      print("WebSocket connection exception: $e");
     }
   }
 

@@ -6,7 +6,12 @@ class WebSocketService {
   
   late IOWebSocketChannel _channel;
   WebSocketService._internal(){
-    _channel = IOWebSocketChannel.connect('ws://192.168.1:81');
+    try {
+      _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+      print('WebSocket connected successfully');
+    } catch (e) {
+      print('WebSocket connection failed: $e');
+    }
     }
   IOWebSocketChannel get channel => _channel;
   }

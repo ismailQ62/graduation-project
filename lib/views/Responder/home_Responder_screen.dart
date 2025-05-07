@@ -5,7 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/user_service.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+//import 'package:lorescue/services/websocket_service.dart';
 import 'dart:convert';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/auth_service.dart';
@@ -21,10 +21,10 @@ class HomeResponderScreen extends StatefulWidget {
 class _HomeResponderScreenState extends State<HomeResponderScreen> {
   Zone _zone = Zone(id: '', name: 'Default Zone');
   String buttonText = 'Connect to LoRescue Network';
-  WebSocketChannel? _channel;
+  //WebSocketChannel? WebSocketService().channel;
   Zone? _receiverZone;
   String? _currentZoneId;
-  
+
   // try this singelton instance of WebSocketService
   //final channel = WebSocketService().channel;
   //channel.sink.add("your message");
@@ -49,26 +49,62 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
 
   void connectToWebSocket() {
     try {
-      _channel = WebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
-      _channel!.stream.listen(
+      final channel = WebSocketService().channel;
+
+      channel.stream.listen(
         (message) async {
-          setState(() {
-            _zone.id = message;
-            buttonText = 'Connected to Zone: ${_zone.id}';
-          });
-          final user = AuthService.getCurrentUser();
-          if (user != null) {
-            user.connectedZoneId = _zone.id;
-            AuthService.setCurrentUser(user);
-            await UserService().updateUserZoneId(user.nationalId, _zone.id);
+          try {
+            final decoded = jsonDecode(message);
+
+            if (decoded is Map<String, dynamic>) {
+              final String type = decoded['type'] ?? '';
+
+              if (type == 'Alert') {
+                // Show a local notification for the alert
+                NotificationController.showNotification(
+                  title: '🚨 Incoming Alert',
+                  body: decoded['content'] ?? 'No message',
+                  sound: 'emergency_alert',
+                  id: 2,
+                );
+
+                print("Received alert from ESP32: ${decoded['content']}");
+              } else if (type == 'NetworkInfo') {
+                // Example of another type of message
+                setState(() {
+                  _zone.id = decoded['zoneId'];
+                  buttonText = 'Connected to Zone: ${_zone.id}';
+                });
+
+                final user = AuthService.getCurrentUser();
+                if (user != null) {
+                  user.connectedZoneId = _zone.id;
+                  AuthService.setCurrentUser(user);
+                  await UserService().updateUserZoneId(
+                    user.nationalId,
+                    _zone.id,
+                  );
+                }
+              }
+            } else if (decoded is String) {
+              // In case ESP32 just sends a plain string
+              setState(() {
+                _zone.id = decoded;
+                buttonText = 'Connected to Zone: ${_zone.id}';
+              });
+            }
+          } catch (e) {
+            print("Error parsing WebSocket message: $e");
           }
         },
         onError: (error) {
           setState(() => buttonText = 'Connection error');
+          print("WebSocket error: $error");
         },
       );
     } catch (e) {
       setState(() => buttonText = 'Connection failed');
+      print("WebSocket connection exception: $e");
     }
   }
 
@@ -116,7 +152,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
 
   @override
   void dispose() {
-    _channel?.sink.close();
+    WebSocketService().channel?.sink.close();
     super.dispose();
   }
 
@@ -239,7 +275,9 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                           "receiver": _receiverZone?.name ?? "ALL",
                         };
                         try {
-                          _channel?.sink.add(jsonEncode(alertPayload));
+                          WebSocketService().channel?.sink.add(
+                            jsonEncode(alertPayload),
+                          );
                           print("Alert sent: ${jsonEncode(alertPayload)}");
                         } catch (e) {
                           print("WebSocket send error: $e");

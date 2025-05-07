@@ -65,7 +65,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   void _register() async {
     bool isConnectedToWifi = await ConnectedToWifi();
-    if (!isConnectedToWifi) {
+    if (isConnectedToWifi) {
       //(!) to be added
       // Show a dialog if not connected to Wi-Fi
       showDialog(
