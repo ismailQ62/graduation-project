@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
@@ -5,11 +7,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/user_service.dart';
-//import 'package:lorescue/services/websocket_service.dart';
 import 'dart:convert';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/services/WebSocketService.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'dart:async';
 
 class HomeResponderScreen extends StatefulWidget {
   const HomeResponderScreen({super.key});
@@ -21,23 +24,57 @@ class HomeResponderScreen extends StatefulWidget {
 class _HomeResponderScreenState extends State<HomeResponderScreen> {
   Zone _zone = Zone(id: '', name: 'Default Zone');
   String buttonText = 'Connect to LoRescue Network';
-  //WebSocketChannel? WebSocketService().channel;
+  final webSocketService = WebSocketService();
+
   Zone? _receiverZone;
-  String? _currentZoneId;
-
-  // try this singelton instance of WebSocketService
-  //final channel = WebSocketService().channel;
-  //channel.sink.add("your message");
-
-  List<Zone> _zones = [
+  final List<Zone> _zones = [
     Zone(id: '1', name: "Zone_1"),
     Zone(id: '2', name: "Zone_2"),
     Zone(id: '3', name: "Zone_3"),
   ];
-
+  Timer? _connectivityTimer;
+  final info = NetworkInfo();
   @override
   void initState() {
     super.initState();
+    _loadInitialZone();
+    if (!webSocketService.isConnected) {
+      print('🔌 WebSocket not connected. Connecting...');
+      webSocketService.connect('ws://192.168.4.1:81');
+    } else {
+      print('✅ WebSocket already connected.');
+    }
+    _listenToWebSocket(); 
+    // _startConnectivityCheck();
+  }
+
+  void _startConnectivityCheck() {
+    _connectivityTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
+      String? ssid = await info.getWifiName();
+      if (ssid != null && ssid.contains("Lorescue")) {
+        setState(() {
+          buttonText = 'Requesting Zone Info...';
+        });
+
+        try {
+          final request = jsonEncode({"type": "NetworkInfo"});
+          WebSocketService().send(request);
+        } catch (e) {
+          print("Error requesting zone info: $e");
+          setState(() {
+            buttonText = 'Failed to request zone info';
+          });
+        }
+      } else {
+        setState(() {
+          buttonText = 'Connect to LoRescue Network';
+          _zone = Zone(id: '', name: '');
+        });
+      }
+    });
+  }
+
+  void _loadInitialZone() {
     final user = AuthService.getCurrentUser();
     if (user != null && user.connectedZone != null) {
       setState(() {
@@ -47,65 +84,8 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
     }
   }
 
-  void connectToWebSocket() {
-    try {
-      final channel = WebSocketService().channel;
-
-      channel.stream.listen(
-        (message) async {
-          try {
-            final decoded = jsonDecode(message);
-
-            if (decoded is Map<String, dynamic>) {
-              final String type = decoded['type'] ?? '';
-
-              if (type == 'Alert') {
-                // Show a local notification for the alert
-                NotificationController.showNotification(
-                  title: '🚨 Incoming Alert',
-                  body: decoded['content'] ?? 'No message',
-                  sound: 'emergency_alert',
-                  id: 2,
-                );
-
-                print("Received alert from ESP32: ${decoded['content']}");
-              } else if (type == 'NetworkInfo') {
-                // Example of another type of message
-                setState(() {
-                  _zone.id = decoded['zoneId'];
-                  buttonText = 'Connected to Zone: ${_zone.id}';
-                });
-
-                final user = AuthService.getCurrentUser();
-                if (user != null) {
-                  user.connectedZoneId = _zone.id;
-                  AuthService.setCurrentUser(user);
-                  await UserService().updateUserZoneId(
-                    user.nationalId,
-                    _zone.id,
-                  );
-                }
-              }
-            } else if (decoded is String) {
-              // In case ESP32 just sends a plain string
-              setState(() {
-                _zone.id = decoded;
-                buttonText = 'Connected to Zone: ${_zone.id}';
-              });
-            }
-          } catch (e) {
-            print("Error parsing WebSocket message: $e");
-          }
-        },
-        onError: (error) {
-          setState(() => buttonText = 'Connection error');
-          print("WebSocket error: $error");
-        },
-      );
-    } catch (e) {
-      setState(() => buttonText = 'Connection failed');
-      print("WebSocket connection exception: $e");
-    }
+  void _listenToWebSocket() {
+    WebSocketService().addListener(_handleWebSocketMessage);
   }
 
   void openWifiSettings() {
@@ -150,10 +130,147 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
     );
   }
 
+  void _showAlertDialog() {
+    final TextEditingController _alertMessageController =
+        TextEditingController();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text("Emergency Alert"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButton<Zone>(
+                hint: const Text("Select Zone"),
+                value: _receiverZone,
+                isExpanded: true,
+                items:
+                    _zones.map((Zone zone) {
+                      return DropdownMenuItem<Zone>(
+                        value: zone,
+                        child: Text("Zone: ${zone.name}"),
+                      );
+                    }).toList(),
+                onChanged: (Zone? newZone) {
+                  setState(() => _receiverZone = newZone!);
+                },
+              ),
+              TextField(
+                controller: _alertMessageController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: "Enter an alert",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                String message = _alertMessageController.text.trim();
+                if (message.isNotEmpty) {
+                  NotificationController.showNotification(
+                    title: "⚠️ Alert",
+                    body: message,
+                    sound: "emergency_alert",
+                    id: 1,
+                  );
+                  final alertPayload = {
+                    "type": "Alert",
+                    "role": "Responder",
+                    "content": message,
+                    "timestamp": DateTime.now().toIso8601String(),
+                    "zoneID": _zone.id,
+                    "receiver": _receiverZone?.name ?? "ALL",
+                  };
+                  try {
+                    WebSocketService().send(jsonEncode(alertPayload));
+                    print("Alert sent: ${jsonEncode(alertPayload)}");
+                  } catch (e) {
+                    print("WebSocket send error: $e");
+                  }
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text("Send"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /* @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && !_isWebSocketConnected) {
+      connectToWebSocket();
+    }
+  } */
+
   @override
   void dispose() {
-    WebSocketService().channel?.sink.close();
+    //WidgetsBinding.instance.removeObserver(this);
+    //WebSocketService().channel?.sink.close();
+    WebSocketService().removeListener(_handleWebSocketMessage);
+    _connectivityTimer?.cancel();
+
     super.dispose();
+  }
+
+  bool zoneReceived = false;
+
+  void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
+    // Move the same logic from the closure into this named method.
+    try {
+      final type = decoded['type'] ?? '';
+
+      if (type == 'Alert') {
+        NotificationController.showNotification(
+          title: '🚨 Incoming Alert',
+          body: decoded['content'] ?? 'No message',
+          sound: 'emergency_alert',
+          id: 2,
+        );
+      } else if (type == 'NetworkInfo' && !zoneReceived) {
+        setState(() {
+          _zone.id = decoded['zoneId'];
+          buttonText = 'Connected to Zone: ${_zone.id}';
+          zoneReceived = true;
+        });
+
+        final user = AuthService.getCurrentUser();
+        if (user != null) {
+          user.connectedZoneId = _zone.id;
+          AuthService.setCurrentUser(user);
+          await UserService().updateUserZoneId(user.nationalId, _zone.id);
+        }
+      }
+    } catch (e) {
+      print("Error handling WebSocket message: $e");
+    }
+  }
+
+  Future<bool> isESP32Reachable({
+    String host = '192.168.4.1',
+    int port = 81,
+  }) async {
+    try {
+      final socket = await Socket.connect(
+        host,
+        port,
+        timeout: Duration(seconds: 2),
+      );
+      socket.destroy();
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   @override
@@ -195,11 +312,48 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                   _buildCategoryBox(
                     icon: Icons.wifi,
                     label: buttonText,
-                    onTap: () {
-                      openWifiSettings();
-                      Future.delayed(const Duration(seconds: 5), () {
-                        connectToWebSocket();
+                    onTap: () async {
+                      // openWifiSettings();
+                      // Future.delayed(const Duration(seconds: 5), () {connectToWebSocket();});
+                      setState(() {
+                        buttonText = "🔍 Checking network...";
                       });
+
+                      bool reachable = await isESP32Reachable();
+
+                      if (!reachable) {
+                        setState(() {
+                          buttonText = "❌ ESP32 not reachable. Open Wi-Fi.";
+                        });
+                        openWifiSettings();
+                        return;
+                      }
+
+                      // ESP32 is reachable, proceed to connect WebSocket
+                      if (!webSocketService.isConnected) {
+                        webSocketService.connect('ws://192.168.4.1:81');
+                        await Future.delayed(const Duration(milliseconds: 500));
+                      }
+
+                      if (webSocketService.isConnected) {
+                       // if (!zoneReceived) {
+                          webSocketService.send(
+                            jsonEncode({"type": "NetworkInfo"}),
+                          );
+                          setState(() {
+                            buttonText = "🔄 Requesting Zone Info...";
+                          });
+                       // } else {
+                        //  setState(() {
+                        //    buttonText =
+                        //        "✅ Already connected to Zone: ${_zone.id}";
+                        //  });
+                        //}
+                      } else {
+                        setState(() {
+                          buttonText = "❌ Could not connect. Check network.";
+                        });
+                      }
                     },
                   ),
                 ],
@@ -208,93 +362,18 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          final TextEditingController _alertMessageController =
-              TextEditingController();
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text("Emergency Alert"),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12.0,
-                        vertical: 4,
-                      ),
-                      child: DropdownButton<Zone>(
-                        hint: const Text("Select Zone"),
-                        value: _receiverZone,
-                        isExpanded: true,
-                        items:
-                            _zones.map((Zone zone) {
-                              return DropdownMenuItem<Zone>(
-                                value: zone,
-                                child: Text("Zone: ${zone.name}"),
-                              );
-                            }).toList(),
-                        onChanged: (Zone? newZone) {
-                          setState(() => _receiverZone = newZone!);
-                        },
-                      ),
-                    ),
-                    TextField(
-                      controller: _alertMessageController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        hintText: "Enter an alert",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
+      floatingActionButton:
+          _zone.id.isEmpty
+              ? null
+              : FloatingActionButton(
+                onPressed: _showAlertDialog,
+                backgroundColor: const Color.fromARGB(255, 244, 228, 58),
+                child: Icon(
+                  Icons.access_alarms,
+                  color: Colors.white,
+                  size: 28.sp,
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text("Cancel"),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      String message = _alertMessageController.text.trim();
-                      if (message.isNotEmpty) {
-                        NotificationController.showNotification(
-                          title: "⚠️ Alert",
-                          body: message,
-                          sound: "emergency_alert",
-                          id: 1,
-                        );
-                        final alertPayload = {
-                          "type": "Alert",
-                          "role": "Responder",
-                          "content": message,
-                          "timestamp": DateTime.now().toIso8601String(),
-                          "zoneID": _zone.id,
-                          "receiver": _receiverZone?.name ?? "ALL",
-                        };
-                        try {
-                          WebSocketService().channel?.sink.add(
-                            jsonEncode(alertPayload),
-                          );
-                          print("Alert sent: ${jsonEncode(alertPayload)}");
-                        } catch (e) {
-                          print("WebSocket send error: $e");
-                        }
-                      }
-                      Navigator.of(context).pop();
-                    },
-                    child: const Text("Send"),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-        backgroundColor: const Color.fromARGB(255, 244, 228, 58),
-        child: Icon(Icons.access_alarms, color: Colors.white, size: 28.sp),
-      ),
+              ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),

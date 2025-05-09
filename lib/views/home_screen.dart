@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -13,6 +13,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:lorescue/models/zone_model.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,11 +30,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String buttonText = 'Connect to LoRescue Network';
   WebSocketChannel? channel;
+  final webSocketService = WebSocketService();
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+
+    if (!webSocketService.isConnected) {
+      print('🔌 WebSocket not connected. Connecting...');
+      webSocketService.connect('ws://192.168.4.1:81');
+    } else {
+      print('✅ WebSocket already connected.');
+    }
+    webSocketService.addListener(_onWebSocketMessage);
 
     final user = AuthService.getCurrentUser();
     if (user != null && user.connectedZone != null) {
@@ -41,6 +51,33 @@ class _HomeScreenState extends State<HomeScreen> {
         _zone = Zone(id: user.connectedZone!, name: 'Auto-connected Zone');
         buttonText = 'Connected to Zone: ${_zone.id}';
       });
+    }
+  }
+
+  void _onWebSocketMessage(Map<String, dynamic> message) async {
+    final type = message['type'];
+
+    if (type == 'Alert') {
+      NotificationController.showNotification(
+        title: '🚨 Incoming Alert',
+        body: message['content'] ?? 'No message',
+        sound: 'emergency_alert',
+        id: 2,
+      );
+
+      print("📩 Received alert from ESP32: ${message['content']}");
+    } else if (type == 'NetworkInfo') {
+      setState(() {
+        _zone.id = message['zoneId'];
+        buttonText = 'Connected to Zone: ${_zone.id}';
+      });
+
+      final user = AuthService.getCurrentUser();
+      if (user != null) {
+        user.connectedZoneId = _zone.id;
+        AuthService.setCurrentUser(user);
+        await UserService().updateUserZoneId(user.nationalId, _zone.id);
+      }
     }
   }
 
@@ -58,6 +95,24 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  Future<bool> isESP32Reachable({
+    String host = '192.168.4.1',
+    int port = 81,
+  }) async {
+    try {
+      final socket = await Socket.connect(
+        host,
+        port,
+        timeout: Duration(seconds: 2),
+      );
+      socket.destroy();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /*
   void connectToWebSocket() {
     try {
       final channel = WebSocketService().channel;
@@ -78,8 +133,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   sound: 'emergency_alert',
                   id: 2,
                 );
-                 setState(() {
-                //  _zone.id = decoded['zoneId'];
+                setState(() {
+                  //  _zone.id = decoded['zoneId'];
                   buttonText = decoded['content'] ?? 'Alert received';
                 });
 
@@ -122,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
       print("WebSocket connection exception: $e");
     }
   }
-
+*/
   void openWifiSettings() {
     final intent = AndroidIntent(
       action: 'android.settings.WIFI_SETTINGS',
@@ -133,7 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    channel?.sink.close();
+    //channel?.sink.close();
+    webSocketService.removeListener(_onWebSocketMessage);
     super.dispose();
   }
 
@@ -191,11 +247,37 @@ class _HomeScreenState extends State<HomeScreen> {
             left: 20.w,
             right: 20.w,
             child: ElevatedButton(
-              onPressed: () {
-                openWifiSettings();
-                Future.delayed(const Duration(seconds: 5), () {
-                  connectToWebSocket();
+              onPressed: () async {
+                setState(() {
+                  buttonText = "🔍 Checking network...";
                 });
+
+                bool reachable = await isESP32Reachable();
+
+                if (!reachable) {
+                  setState(() {
+                    buttonText = "❌ ESP32 not reachable. Open Wi-Fi.";
+                  });
+                  openWifiSettings();
+                  return;
+                }
+
+                // ESP32 is reachable, proceed to connect WebSocket
+                if (!webSocketService.isConnected) {
+                  webSocketService.connect('ws://192.168.4.1:81');
+                  await Future.delayed(const Duration(milliseconds: 500));
+                }
+
+                if (webSocketService.isConnected) {
+                  webSocketService.send(jsonEncode({"type": "NetworkInfo"}));
+                  setState(() {
+                    buttonText = "🔄 Requesting Zone Info...";
+                  });
+                } else {
+                  setState(() {
+                    buttonText = "❌ Could not connect. Check network.";
+                  });
+                }
               },
               child: Text(buttonText),
             ),

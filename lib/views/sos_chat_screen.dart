@@ -115,7 +115,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
         "content": content,
         "channelID": "0",
-        "zoneID": zoneId,
+        "zoneId": zoneId,
         "receiverZone": receiverZone,
         "gps": "32.1234,36.5678",
       };

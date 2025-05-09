@@ -2,11 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
+import 'package:lorescue/services/WebSocketService.dart'; 
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await NotificationController.initialize();
+
+  // Connect globally once app starts
+  WebSocketService().connect('ws://192.168.4.1:81');
 
   const String route = String.fromEnvironment(
     'ROUTE',
