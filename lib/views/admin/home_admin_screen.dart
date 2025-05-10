@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/views/admin/mange_zone_screen.dart';
 
 class HomeAdminScreen extends StatefulWidget {
   const HomeAdminScreen({super.key});
@@ -44,6 +45,18 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                         () => Navigator.pushNamed(
                           context,
                           AppRoutes.verification,
+                        ),
+                  ),
+                  _buildCategoryBox(
+                    context,
+                    icon: Icons.map,
+                    label: "Manage Zones",
+                    onTap:
+                        () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ManageZonesScreen(),
+                          ),
                         ),
                   ),
                 ],

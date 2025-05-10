@@ -24,7 +24,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final MapController _mapController;
-  LatLng _currentLocation = const LatLng(32.49789641037709, 35.98605293585062);
+  final LatLng _currentLocation = const LatLng(
+    32.49789641037709,
+    35.98605293585062,
+  );
   double _currentZoom = 15.0;
   Zone _zone = Zone(id: '', name: 'Default Zone');
 

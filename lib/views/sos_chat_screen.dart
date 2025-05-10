@@ -20,11 +20,11 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic>? _currentUser;
-  String _messageType = "SOS";
+  final String _messageType = "SOS";
   String? _currenZoneId;
 
   Zone? _receiverZone;
-  List<Zone> _zones = [
+  final List<Zone> _zones = [
     Zone(id: '1', name: "Zone_1"),
     Zone(id: '2', name: "Zone_2"),
     Zone(id: '3', name: "Zone_3"),
@@ -164,7 +164,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   }
 
   void _showSosDialog() {
-    final TextEditingController _sosMessageController = TextEditingController();
+    final TextEditingController sosMessageController = TextEditingController();
 
     showDialog(
       context: context,
@@ -172,7 +172,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         return AlertDialog(
           title: const Text("Send SOS"),
           content: TextField(
-            controller: _sosMessageController,
+            controller: sosMessageController,
             maxLines: 3,
             decoration: const InputDecoration(
               hintText: "Enter SOS message",
@@ -186,7 +186,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             ),
             ElevatedButton(
               onPressed: () {
-                String message = _sosMessageController.text.trim();
+                String message = sosMessageController.text.trim();
                 if (message.isNotEmpty) {
                   _controller.text = message;
                   _sendMessage();
@@ -287,7 +287,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             right: 20,
             child: FloatingActionButton(
               onPressed: () {
-                final TextEditingController _sosMessageController =
+                final TextEditingController sosMessageController =
                     TextEditingController();
 
                 showDialog(
@@ -296,7 +296,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
                     return AlertDialog(
                       title: const Text("Send SOS"),
                       content: TextField(
-                        controller: _sosMessageController,
+                        controller: sosMessageController,
                         maxLines: 3,
                         decoration: const InputDecoration(
                           hintText: "Enter SOS message",
@@ -310,7 +310,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
                         ),
                         ElevatedButton(
                           onPressed: () {
-                            String message = _sosMessageController.text.trim();
+                            String message = sosMessageController.text.trim();
                             if (message.isNotEmpty) {
                               NotificationController.showNotification(
                                 title: "🚨 SOS",
@@ -329,10 +329,10 @@ class _SosChatScreenState extends State<SosChatScreen> {
                 );
               },
               backgroundColor: Colors.redAccent,
-              child: const Icon(Icons.warning_amber_rounded, size: 32),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
+              child: const Icon(Icons.warning_amber_rounded, size: 32),
             ),
           ),
         ],

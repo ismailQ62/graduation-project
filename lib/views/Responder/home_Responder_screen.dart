@@ -44,7 +44,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
     } else {
       print('✅ WebSocket already connected.');
     }
-    _listenToWebSocket(); 
+    _listenToWebSocket();
     // _startConnectivityCheck();
   }
 
@@ -336,14 +336,14 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                       }
 
                       if (webSocketService.isConnected) {
-                       // if (!zoneReceived) {
-                          webSocketService.send(
-                            jsonEncode({"type": "NetworkInfo"}),
-                          );
-                          setState(() {
-                            buttonText = "🔄 Requesting Zone Info...";
-                          });
-                       // } else {
+                        // if (!zoneReceived) {
+                        webSocketService.send(
+                          jsonEncode({"type": "NetworkInfo"}),
+                        );
+                        setState(() {
+                          buttonText = "🔄 Requesting Zone Info...";
+                        });
+                        // } else {
                         //  setState(() {
                         //    buttonText =
                         //        "✅ Already connected to Zone: ${_zone.id}";

@@ -14,6 +14,7 @@ class Responder extends User {
     this.verified = false,
   });
 
+  @override
   Map<String, dynamic> toMap() {
     return {
       'id': id,

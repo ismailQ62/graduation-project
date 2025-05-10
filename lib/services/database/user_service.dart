@@ -1,10 +1,11 @@
 import 'package:lorescue/models/user_model.dart';
-
 import 'package:lorescue/services/database/database_service.dart';
+import 'package:sqflite/sqflite.dart';
 
 class UserService {
   final DatabaseService _dbService = DatabaseService();
 
+  // Register a new user
   Future<String> registerUser(User user) async {
     final db = await _dbService.database;
     final existingUsers = await db.query(
@@ -19,6 +20,7 @@ class UserService {
     return 'Registration successful!';
   }
 
+  // Login with National ID and Password
   Future<User?> loginUser(String nationalId, String password) async {
     final db = await _dbService.database;
     final users = await db.query(
@@ -39,6 +41,7 @@ class UserService {
     return null;
   }
 
+  // Check if a National ID already exists
   Future<bool> doesNationalIdExist(String nationalId) async {
     final db = await _dbService.database;
     final result = await db.query(
@@ -49,6 +52,7 @@ class UserService {
     return result.isNotEmpty;
   }
 
+  // Update user's connected zone ID
   Future<void> updateUserZoneId(String nationalId, String zoneId) async {
     final db = await _dbService.database;
     await db.update(
@@ -59,6 +63,7 @@ class UserService {
     );
   }
 
+  // Get all users from the database
   Future<List<User>> getAllUsers() async {
     final db = await _dbService.database;
     final List<Map<String, dynamic>> maps = await db.query('users');
@@ -78,5 +83,19 @@ class UserService {
   Future<void> deleteUser(String nationalId) async {
     final db = await _dbService.database;
     await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
+  }
+
+  Future<void> insertUser(User user) async {
+    final db = await _dbService.database;
+    await db.insert(
+      'users',
+      user.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  Future<void> deleteAllUsers() async {
+    final db = await _dbService.database;
+    await db.delete('users');
   }
 }

@@ -61,6 +61,12 @@ class DatabaseService {
         name TEXT NOT NULL
       )
     ''');
+    await db.execute(''' 
+      CREATE TABLE IF NOT EXISTS zones (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+      )
+    ''');
 
     final existing = await db.query('channels');
     final existingIds = existing.map((e) => e['id']).toList();
@@ -134,5 +140,20 @@ class DatabaseService {
   Future<void> deleteUser(String nationalId) async {
     final db = await database;
     await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
+  }
+
+  Future<List<Map<String, dynamic>>> getZones() async {
+    final db = await database;
+    return await db.query('zones');
+  }
+
+  Future<void> addZone(String zoneId, String zoneName) async {
+    final db = await database;
+    await db.insert('zones', {'id': zoneId, 'name': zoneName});
+  }
+
+  Future<void> deleteZone(String zoneId) async {
+    final db = await database;
+    await db.delete('zones', where: 'id = ?', whereArgs: [zoneId]);
   }
 }

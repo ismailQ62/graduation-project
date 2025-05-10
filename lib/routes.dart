@@ -23,65 +23,88 @@ class AppRoutes {
   static const String home = '/home';
   static const String register = '/register';
   static const String map = '/map';
-  static const String chat = "/chat";
-  static const String profile = "/profile";
-  static const String verification = "/verification";
-  static const String manageChannel = "/manageChannel";
-  static const String channels = "/channels";
-  static const String homeAdmin = "/homeAdmin";
-  static const String homeResponder = "/homeResponder";
-  static const String sosChat = "/sosChat";
+  static const String chat = '/chat';
+  static const String profile = '/profile';
+  static const String verification = '/verification';
+  static const String manageChannel = '/manageChannel';
+  static const String channels = '/channels';
+  static const String homeAdmin = '/homeAdmin';
+  static const String homeResponder = '/homeResponder';
+  static const String sosChat = '/sosChat';
   static const String manageUsers = '/manageUsers';
   static const String uploadVerification = '/uploadVerification';
+
+  /// Slide transition builder
+  static PageRouteBuilder _customPageRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+        final tween = Tween(
+          begin: begin,
+          end: end,
+        ).chain(CurveTween(curve: curve));
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
+      transitionDuration: const Duration(milliseconds: 300),
+    );
+  }
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
-        return MaterialPageRoute(builder: (_) => const SplashScreen());
+        return _customPageRoute(const SplashScreen());
       case login:
-        return MaterialPageRoute(builder: (_) => const LoginScreen());
+        return _customPageRoute(const LoginScreen());
       case register:
-        return MaterialPageRoute(builder: (_) => const RegisterScreen());
+        return _customPageRoute(const RegisterScreen());
       case map:
-        return MaterialPageRoute(builder: (_) => const MapScreen());
+        return _customPageRoute(const MapScreen());
       case home:
-        return MaterialPageRoute(builder: (_) => const HomeScreen());
+        return _customPageRoute(const HomeScreen());
       case chat:
-        final args = settings.arguments as Map<String, dynamic>;
+        final args = settings.arguments as Map<String, dynamic>?;
+        if (args == null ||
+            !args.containsKey('channel') ||
+            !args.containsKey('zone')) {
+          return _customPageRoute(
+            const Scaffold(body: Center(child: Text("Missing chat arguments"))),
+          );
+        }
         final channel = args['channel'] as Channel;
         final zone = args['zone'] as Zone;
-        return MaterialPageRoute(
-          builder: (_) => ChatScreen(channel: channel, zone: zone),
-        );
-
+        return _customPageRoute(ChatScreen(channel: channel, zone: zone));
       case profile:
-        return MaterialPageRoute(builder: (_) => const ProfileScreen());
+        return _customPageRoute(const ProfileScreen());
       case manageChannel:
-        return MaterialPageRoute(builder: (_) => const ManageChannelsScreen());
+        return _customPageRoute(const ManageChannelsScreen());
       case channels:
-        final zone = settings.arguments as Zone;
-        return MaterialPageRoute(
-          builder: (context) => ChannelsScreen(zone: zone),
-        );
+        final zone = settings.arguments as Zone?;
+        if (zone == null) {
+          return _customPageRoute(
+            const Scaffold(
+              body: Center(child: Text("Missing zone for channel screen")),
+            ),
+          );
+        }
+        return _customPageRoute(ChannelsScreen(zone: zone));
       case verification:
-        return MaterialPageRoute(builder: (_) => const VerificationScreen());
+        return _customPageRoute(const VerificationScreen());
       case homeResponder:
-        return MaterialPageRoute(builder: (_) => const HomeResponderScreen());
+        return _customPageRoute(const HomeResponderScreen());
       case sosChat:
-        return MaterialPageRoute(builder: (_) => const SosChatScreen());
+        return _customPageRoute(const SosChatScreen());
       case homeAdmin:
-        return MaterialPageRoute(builder: (_) => const HomeAdminScreen());
+        return _customPageRoute(const HomeAdminScreen());
       case manageUsers:
-        return MaterialPageRoute(builder: (_) => const ManageUsersScreen());
+        return _customPageRoute(const ManageUsersScreen());
       case uploadVerification:
-        return MaterialPageRoute(
-          builder: (_) => const UploadVerificationScreen(),
-        );
-
+        return _customPageRoute(const UploadVerificationScreen());
       default:
-        return MaterialPageRoute(
-          builder:
-              (_) =>
-                  const Scaffold(body: Center(child: Text("Page Not Found"))),
+        return _customPageRoute(
+          const Scaffold(body: Center(child: Text("🚫 Page Not Found"))),
         );
     }
   }

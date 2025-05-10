@@ -1,5 +1,5 @@
 class User {
-  int? _id;
+  final int? _id;
   String _name;
   //String last_name;
   String _nationalId;
@@ -81,5 +81,31 @@ class User {
     };
   }
 
-  static fromMap(Map<String, Object?> map) {}
+  factory User.fromJson(Map<String, dynamic> json) => User(
+    id: json['id'],
+    name: json['name'],
+    nationalId: json['nationalId'],
+    password: json['password'],
+    role: json['role'],
+    connectedZoneId: json['connectedZoneId'],
+  );
+  Map<String, dynamic> toJson() {
+    return {
+      'id': _id,
+      'name': _name,
+      'nationalId': _nationalId,
+      'password': _password,
+      'role': _role,
+      'connectedZoneId': _connectedZoneId,
+    };
+  }
+
+  factory User.fromMap(Map<String, Object?> map) => User(
+    id: map['id'] as int?,
+    name: map['name'] as String,
+    nationalId: map['nationalId'] as String,
+    password: map['password'] as String,
+    role: map['role'] as String,
+    connectedZoneId: map['connectedZoneId'] as String?,
+  );
 }

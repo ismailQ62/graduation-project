@@ -22,7 +22,27 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   void initState() {
     super.initState();
     _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
-    fetchUsers();
+
+    _channel.stream.listen((message) async {
+      final data = jsonDecode(message);
+
+      // 🔁 Trigger simple reload
+      if (data["type"] == "trigger_user_sync") {
+        fetchUsers();
+      }
+
+      // 📥 Sync full user list
+      if (data["type"] == "sync_users" && data["users"] != null) {
+        final List<dynamic> receivedUsers = data["users"];
+        await UserService().deleteAllUsers(); // clear local db
+        for (var u in receivedUsers) {
+          await UserService().insertUser(User.fromJson(u));
+        }
+        fetchUsers(); // reload UI
+      }
+    });
+
+    fetchUsers(); // initial load
   }
 
   @override
@@ -32,12 +52,21 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     super.dispose();
   }
 
+  // 🔄 Admin shares users with others
+  void broadcastUserList(List<User> users) {
+    final userListJson = users.map((u) => u.toJson()).toList();
+    final payload = {"type": "sync_users", "users": userListJson};
+    _channel.sink.add(jsonEncode(payload));
+  }
+
   Future<void> fetchUsers() async {
     final fetchedUsers = await UserService().getAllUsers();
     setState(() {
       users = fetchedUsers;
       filteredUsers = fetchedUsers;
     });
+
+    broadcastUserList(fetchedUsers); // Notify others with user data
   }
 
   void searchUsers(String query) {
@@ -60,7 +89,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   Future<void> deleteUser(User user) async {
     await UserService().deleteUser(user.nationalId);
 
-    // Send WebSocket message to ESP32
     final payload = {
       "type": "delete_user",
       "id": user.nationalId,

@@ -13,8 +13,7 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 class ChatScreen extends StatefulWidget {
   final Channel channel;
   final Zone zone;
-  ChatScreen({Key? key, required this.channel, required this.zone})
-    : super(key: key);
+  const ChatScreen({super.key, required this.channel, required this.zone});
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -31,13 +30,13 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> _messages = [];
   List<Map<String, dynamic>> channelmessages = [];
   Map<String, dynamic>? _currentUser;
-  String _messageType = "Chat";
+  final String _messageType = "Chat";
 
   Zone? _receiverZone;
    WebSocketChannel? channel;
   final webSocketService = WebSocketService();
 
-  List<Zone> _zones = [
+  final List<Zone> _zones = [
     Zone(id: '1', name: "Zone_1"),
     Zone(id: '2', name: "Zone_2"),
     Zone(id: '3', name: "Zone_3"),
@@ -282,7 +281,7 @@ void _disconnectWebSocket() {
     final channel = widget.channel;
 
     return Scaffold(
-      appBar: AppBar(title: Text("${channel.name}")),
+      appBar: AppBar(title: Text(channel.name)),
       body: Column(
         children: [
           Padding(
