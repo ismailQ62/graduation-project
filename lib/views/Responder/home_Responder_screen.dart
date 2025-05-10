@@ -5,6 +5,7 @@ import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
+import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/user_service.dart';
 import 'dart:convert';
@@ -25,6 +26,8 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   Zone _zone = Zone(id: '', name: 'Default Zone');
   String buttonText = 'Connect to LoRescue Network';
   final webSocketService = WebSocketService();
+  Map<String, dynamic>? _currentUser;
+  String? _currentZoneId;
 
   Zone? _receiverZone;
   final List<Zone> _zones = [
@@ -35,9 +38,18 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   Timer? _connectivityTimer;
   final info = NetworkInfo();
   @override
-  void initState() {
+  void initState()  {
     super.initState();
+    final user = AuthService.getCurrentUser();
+    if (user != null) {
+      setState(() {
+        _currentUser = {'nationalId': user.nationalId, 'name': user.name};
+      });
+    } else {
+      debugPrint("No current user found.");
+    }
     _loadInitialZone();
+
     if (!webSocketService.isConnected) {
       print('🔌 WebSocket not connected. Connecting...');
       webSocketService.connect('ws://192.168.4.1:81');
@@ -45,30 +57,34 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
       print('✅ WebSocket already connected.');
     }
     _listenToWebSocket();
-    // _startConnectivityCheck();
+    _startConnectivityCheck();
   }
 
   void _startConnectivityCheck() {
     _connectivityTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
       String? ssid = await info.getWifiName();
       if (ssid != null && ssid.contains("Lorescue")) {
-        setState(() {
-          buttonText = 'Requesting Zone Info...';
-        });
-
-        try {
-          final request = jsonEncode({"type": "NetworkInfo"});
-          WebSocketService().send(request);
-        } catch (e) {
-          print("Error requesting zone info: $e");
+        if (!zoneReceived) {
           setState(() {
-            buttonText = 'Failed to request zone info';
+            buttonText = 'Requesting Zone Info...';
           });
+
+          try {
+            final request = jsonEncode({"type": "NetworkInfo"});
+            WebSocketService().send(request);
+          } catch (e) {
+            print("Error requesting zone info: $e");
+            setState(() {
+              buttonText = 'Failed to request zone info';
+            });
+          }
         }
+        // If zoneReceived is true, do not overwrite the buttonText
       } else {
         setState(() {
           buttonText = 'Connect to LoRescue Network';
           _zone = Zone(id: '', name: '');
+          zoneReceived = false; // Reset so it can request again when reconnected
         });
       }
     });
@@ -175,14 +191,9 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
               onPressed: () {
                 String message = _alertMessageController.text.trim();
                 if (message.isNotEmpty) {
-                  NotificationController.showNotification(
-                    title: "⚠️ Alert",
-                    body: message,
-                    sound: "emergency_alert",
-                    id: 1,
-                  );
                   final alertPayload = {
                     "type": "Alert",
+                    "senderID": _currentUser?['nationalId'] ?? "Unknown",
                     "role": "Responder",
                     "content": message,
                     "timestamp": DateTime.now().toIso8601String(),
@@ -206,17 +217,9 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
     );
   }
 
-  /* @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_isWebSocketConnected) {
-      connectToWebSocket();
-    }
-  } */
-
   @override
   void dispose() {
     //WidgetsBinding.instance.removeObserver(this);
-    //WebSocketService().channel?.sink.close();
     WebSocketService().removeListener(_handleWebSocketMessage);
     _connectivityTimer?.cancel();
 
@@ -226,11 +229,14 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   bool zoneReceived = false;
 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
-    // Move the same logic from the closure into this named method.
     try {
       final type = decoded['type'] ?? '';
+      final senderId = decoded['senderID'] ?? '';
 
       if (type == 'Alert') {
+        if(senderId == _currentUser?['nationalId']) {
+          return; // Ignore alerts sent by the current user
+        }
         NotificationController.showNotification(
           title: '🚨 Incoming Alert',
           body: decoded['content'] ?? 'No message',
@@ -313,14 +319,11 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                     icon: Icons.wifi,
                     label: buttonText,
                     onTap: () async {
-                      // openWifiSettings();
-                      // Future.delayed(const Duration(seconds: 5), () {connectToWebSocket();});
                       setState(() {
                         buttonText = "🔍 Checking network...";
                       });
 
                       bool reachable = await isESP32Reachable();
-
                       if (!reachable) {
                         setState(() {
                           buttonText = "❌ ESP32 not reachable. Open Wi-Fi.";
@@ -328,27 +331,19 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                         openWifiSettings();
                         return;
                       }
-
-                      // ESP32 is reachable, proceed to connect WebSocket
+                      
                       if (!webSocketService.isConnected) {
                         webSocketService.connect('ws://192.168.4.1:81');
                         await Future.delayed(const Duration(milliseconds: 500));
                       }
 
                       if (webSocketService.isConnected) {
-                        // if (!zoneReceived) {
                         webSocketService.send(
                           jsonEncode({"type": "NetworkInfo"}),
                         );
                         setState(() {
                           buttonText = "🔄 Requesting Zone Info...";
                         });
-                        // } else {
-                        //  setState(() {
-                        //    buttonText =
-                        //        "✅ Already connected to Zone: ${_zone.id}";
-                        //  });
-                        //}
                       } else {
                         setState(() {
                           buttonText = "❌ Could not connect. Check network.";

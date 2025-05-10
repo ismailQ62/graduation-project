@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/models/zone_model.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'dart:convert';
+import 'package:lorescue/services/gps_service.dart';
 
 class SosChatScreen extends StatefulWidget {
   const SosChatScreen({super.key});
@@ -16,12 +18,13 @@ class SosChatScreen extends StatefulWidget {
 class _SosChatScreenState extends State<SosChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final DatabaseService _dbService = DatabaseService();
-  final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+  final GPSService _gpsService = GPSService();
+  final webSocketService = WebSocketService();
 
   List<Map<String, dynamic>> _messages = [];
   Map<String, dynamic>? _currentUser;
   final String _messageType = "SOS";
-  String? _currenZoneId;
+  String? _currentZoneId;
 
   Zone? _receiverZone;
   final List<Zone> _zones = [
@@ -35,45 +38,71 @@ class _SosChatScreenState extends State<SosChatScreen> {
     super.initState();
     _loadCurrentUser();
     _loadMessages();
-    _currenZoneId = AuthService.getCurrentUser()?.connectedZone;
+    if (!webSocketService.isConnected) {
+      print('🔌 WebSocket not connected. Connecting...');
+      webSocketService.connect('ws://192.168.4.1:81');
+    } else {
+      print('✅ WebSocket already connected.');
+    }
+    _listenToWebSocket();
+  }
 
-    _channel.stream.listen((message) async {
-      final received = message.toString();
-      final jsonMessage = jsonDecode(received);
+  void _listenToWebSocket() {
+    WebSocketService().addListener(_handleWebSocketMessage);
+  }
 
-      final senderId = jsonMessage["senderID"] ?? "ESP32";
-      final content = jsonMessage["content"] ?? received;
-      final timestamp = DateTime.now().toIso8601String();
-      final msgType = jsonMessage["type"] ?? "unknown";
-      final receiverZone = jsonMessage["receiverZone"] ?? "unknown";
+  void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
+    try {
+      final msgType = decoded['type'] ?? '';
+      if (msgType == "SOS") {
+        final senderId = decoded["senderID"] ?? "ESP32";
+        final content = decoded["content"] ?? decoded["text"] ?? "No content";
+        final timestamp = DateTime.now().toIso8601String();
+        final receiverZone = decoded["receiverZone"] ?? "unknown";
+        if (_currentUser!['nationalId'] == senderId) {
+          return;
+        }
+        await _dbService.insertMessage(
+          sender: senderId,
+          text: content,
+          timestamp: timestamp,
+          type: msgType,
+          channelId: 0,
+          receiverZone: receiverZone,
+        );
 
-      await _dbService.insertMessage(
-        sender: senderId,
-        text: content,
-        timestamp: timestamp,
-        type: msgType,
-        channelId: 0,
-        receiverZone: receiverZone,
-      );
-
-      setState(() {
-        _messages.add({
-          'sender': senderId,
-          'text': content,
-          'timestamp': timestamp,
-          'type': msgType,
-          'receiverZoneId': receiverZone,
+        setState(() {
+          _messages.add({
+            'sender': senderId,
+            'username': decoded["username"] ?? "Unknown",
+            'text': content,
+            'timestamp': timestamp,
+            'type': msgType,
+            'receiverZoneId': receiverZone,
+            'gps': decoded["gps"] ?? "0, 0",
+          });
         });
-      });
-    });
+      NotificationController.showNotification(
+        title: "🚨 SOS",
+        body: decoded["content"] ?? "SOS message received",
+        sound: "whoop_alert",
+        id: 2,
+      );
+      }
+    } catch (e) {
+      print('Error handling WebSocket message: $e');
+    }
   }
 
   Future<void> _loadCurrentUser() async {
-    List<Map<String, dynamic>> users = await _dbService.getUsers();
-    if (users.isNotEmpty) {
+    final user = AuthService.getCurrentUser();
+    if (user != null) {
       setState(() {
-        _currentUser = users.first;
+        _currentUser = {'nationalId': user.nationalId, 'name': user.name};
+        _currentZoneId = user.connectedZone;
       });
+    } else {
+      debugPrint("No current user found.");
     }
   }
 
@@ -90,11 +119,9 @@ class _SosChatScreenState extends State<SosChatScreen> {
     if (_controller.text.isNotEmpty && _currentUser != null) {
       String content = _controller.text.trim();
       DateTime now = DateTime.now();
-
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId =
-          _currenZoneId ?? "Zone_1"; // Default zone if not connected
+      String zoneId = _currentZoneId ?? "Zone_1"; // Default zone if not connected
       String receiverZone = _receiverZone?.name ?? "ALL";
 
       /* List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
@@ -104,6 +131,13 @@ class _SosChatScreenState extends State<SosChatScreen> {
           dbMessages.isNotEmpty
               ? dbMessages.first['channelId'].toString()
               : "1"; */
+      var location = await _gpsService.getCurrentLocation();
+      if (location == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Unable to fetch location.")),
+        );
+        location = LatLng(0, 0);
+      }
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -117,12 +151,11 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "channelID": "0",
         "zoneId": zoneId,
         "receiverZone": receiverZone,
-        "gps": "32.1234,36.5678",
+        "gps": "${location.latitude}, ${location.longitude}",
       };
 
       try {
-        _channel.sink.add(jsonEncode(messageJson));
-
+        webSocketService.send(jsonEncode(messageJson));
         await _dbService.insertMessage(
           sender: nationalId,
           text: content,
@@ -135,22 +168,14 @@ class _SosChatScreenState extends State<SosChatScreen> {
         setState(() {
           _messages.add({
             'sender': nationalId,
+            'username': username,
             'text': content,
             'timestamp': now.toIso8601String(),
             'type': _messageType,
             'receiverZoneId': receiverZone,
+            'gps': "${location?.latitude}, ${location?.longitude}",
           });
         });
-
-        // if sending SOS message, show notification
-
-        /*  NotificationController.showNotification(
-          title: "New Message Sent",
-          body: content,
-          sound: "whoop_alert", 
-          id: 3, 
-        ); */
-
         _controller.clear();
       } catch (e) {
         debugPrint('Error sending message: $e');
@@ -203,7 +228,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
   @override
   void dispose() {
-    _channel.sink.close();
+    webSocketService.removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
@@ -245,14 +270,16 @@ class _SosChatScreenState extends State<SosChatScreen> {
                     final message = _messages[index];
                     final senderId =
                         message['sender'] ?? message['senderId'] ?? 'Unknown';
+                    final senderName =
+                        message['username'] ?? message['senderName'] ?? 'Unknown';
                     final content =
                         message['text'] ?? message['content'] ?? 'No content';
                     final timestamp = message['timestamp'] ?? '';
-                    final msgType = message['type'] ?? 'unknown';
+                    final gps = message['gps'] ?? '0, 0';
 
                     return ListTile(
                       title: Text(
-                        '[$msgType] Sender: $senderId\nMessage: $content',
+                        'Sender: $senderName $senderId\nMessage: $content\nLocation: $gps',
                       ),
                       subtitle: Text('Sent at: $timestamp'),
                     );
@@ -287,46 +314,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             right: 20,
             child: FloatingActionButton(
               onPressed: () {
-                final TextEditingController sosMessageController =
-                    TextEditingController();
-
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: const Text("Send SOS"),
-                      content: TextField(
-                        controller: sosMessageController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          hintText: "Enter SOS message",
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text("Cancel"),
-                        ),
-                        ElevatedButton(
-                          onPressed: () {
-                            String message = sosMessageController.text.trim();
-                            if (message.isNotEmpty) {
-                              NotificationController.showNotification(
-                                title: "🚨 SOS",
-                                body: message,
-                                sound: "whoop_alert",
-                                id: 2,
-                              );
-                            }
-                            Navigator.of(context).pop();
-                          },
-                          child: const Text("Send"),
-                        ),
-                      ],
-                    );
-                  },
-                );
+                _showSosDialog();
               },
               backgroundColor: Colors.redAccent,
               shape: RoundedRectangleBorder(
