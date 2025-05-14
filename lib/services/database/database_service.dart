@@ -98,6 +98,7 @@ class DatabaseService {
       'zoneId': receiverZone,
       'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+    print ('Message inserted: $sender, $text, $type, $receiverZone, $channelId');
   }
 
   Future<List<Map<String, dynamic>>> getMessages(String type) async {
@@ -106,7 +107,7 @@ class DatabaseService {
       'messages',
       where: 'type = ?',
       whereArgs: [type],
-      orderBy: 'timestamp DESC',
+      orderBy: 'timestamp ASC',
     );
   }
 
@@ -120,7 +121,7 @@ class DatabaseService {
       'messages',
       where: 'type = ? AND channelId = ? AND zoneId = ?',
       whereArgs: [type, channelId, zoneId],
-      orderBy: 'timestamp DESC',
+      orderBy: 'timestamp ASC',
     );
   }
 
