@@ -51,6 +51,7 @@ class DatabaseService {
         timestamp TEXT NOT NULL,
         isRead INTEGER NOT NULL DEFAULT 0,
         channelId INTEGER NOT NULL DEFAULT 1,
+        zoneId TEXT NOT NULL DEFAULT '',
         type TEXT NOT NULL
       )
     ''');
@@ -64,7 +65,8 @@ class DatabaseService {
     await db.execute(''' 
       CREATE TABLE IF NOT EXISTS zones (
         id TEXT PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        status TEXT NOT NULL
       )
     ''');
 
@@ -93,7 +95,7 @@ class DatabaseService {
       'content': text,
       'timestamp': timestamp,
       'type': type,
-      'receiverId': receiverZone,
+      'zoneId': receiverZone,
       'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
@@ -111,12 +113,13 @@ class DatabaseService {
   Future<List<Map<String, dynamic>>> getMessagesForChannel(
     String type,
     int channelId,
+    String zoneId,
   ) async {
     final db = await database;
     return await db.query(
       'messages',
-      where: 'type = ? AND channelId = ?',
-      whereArgs: [type, channelId],
+      where: 'type = ? AND channelId = ? AND zoneId = ?',
+      whereArgs: [type, channelId, zoneId],
       orderBy: 'timestamp DESC',
     );
   }
