@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +27,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   final webSocketService = WebSocketService();
   Map<String, dynamic>? _currentUser;
   String? _currentZoneId;
+  bool _approvedHandled = false; // ✅ Track if approval was processed
 
   Zone? _receiverZone;
   final List<Zone> _zones = [
@@ -37,8 +37,10 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   ];
   Timer? _connectivityTimer;
   final info = NetworkInfo();
+  bool zoneReceived = false;
+
   @override
-  void initState()  {
+  void initState() {
     super.initState();
     final user = AuthService.getCurrentUser();
     if (user != null) {
@@ -61,33 +63,37 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   }
 
   void _startConnectivityCheck() {
-    _connectivityTimer = Timer.periodic(Duration(seconds: 5), (timer) async {
-      String? ssid = await info.getWifiName();
-      if (ssid != null && ssid.contains("Lorescue")) {
-        if (!zoneReceived) {
-          setState(() {
-            buttonText = 'Requesting Zone Info...';
-          });
-
-          try {
-            final request = jsonEncode({"type": "NetworkInfo"});
-            WebSocketService().send(request);
-          } catch (e) {
-            print("Error requesting zone info: $e");
-            setState(() {
-              buttonText = 'Failed to request zone info';
-            });
-          }
-        }
-        // If zoneReceived is true, do not overwrite the buttonText
-      } else {
-        setState(() {
-          buttonText = 'Connect to LoRescue Network';
-          _zone = Zone(id: '', name: '');
-          zoneReceived = false; // Reset so it can request again when reconnected
-        });
-      }
+    _checkZoneNow();
+    _connectivityTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      _checkZoneNow();
     });
+  }
+
+  Future<void> _checkZoneNow() async {
+    String? ssid = await info.getWifiName();
+    if (ssid != null && ssid.contains("Lorescue")) {
+      if (!zoneReceived) {
+        setState(() {
+          buttonText = 'Requesting Zone Info...';
+        });
+
+        try {
+          final request = jsonEncode({"type": "NetworkInfo"});
+          WebSocketService().send(request);
+        } catch (e) {
+          print("Error requesting zone info: $e");
+          setState(() {
+            buttonText = 'Failed to request zone info';
+          });
+        }
+      }
+    } else {
+      setState(() {
+        buttonText = 'Connect to LoRescue Network';
+        _zone = Zone(id: '', name: '');
+        zoneReceived = false;
+      });
+    }
   }
 
   void _loadInitialZone() {
@@ -219,14 +225,10 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
 
   @override
   void dispose() {
-    //WidgetsBinding.instance.removeObserver(this);
     WebSocketService().removeListener(_handleWebSocketMessage);
     _connectivityTimer?.cancel();
-
     super.dispose();
   }
-
-  bool zoneReceived = false;
 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
@@ -234,9 +236,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
       final senderId = decoded['senderID'] ?? '';
 
       if (type == 'Alert') {
-        if(senderId == _currentUser?['nationalId']) {
-          return; // Ignore alerts sent by the current user
-        }
+        if (senderId == _currentUser?['nationalId']) return;
         NotificationController.showNotification(
           title: '🚨 Incoming Alert',
           body: decoded['content'] ?? 'No message',
@@ -255,6 +255,31 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
           user.connectedZoneId = _zone.id;
           AuthService.setCurrentUser(user);
           await UserService().updateUserZoneId(user.nationalId, _zone.id);
+        }
+      } else if (type == 'verify') {
+        final currentUser = AuthService.getCurrentUser();
+        if (currentUser == null) return;
+
+        if (decoded['id'] == currentUser.nationalId) {
+          final status = decoded['status'];
+
+          if (status == 'approved' && !_approvedHandled) {
+            _approvedHandled = true;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('✅ Verification Approved!')),
+            );
+          } else if (status == 'rejected') {
+            await UserService().deleteUser(currentUser.nationalId);
+            AuthService.logout();
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('❌ Verification Rejected. Account Deleted.'),
+              ),
+            );
+
+            Navigator.pushReplacementNamed(context, AppRoutes.login);
+          }
         }
       }
     } catch (e) {
@@ -331,7 +356,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
                         openWifiSettings();
                         return;
                       }
-                      
+
                       if (!webSocketService.isConnected) {
                         webSocketService.connect('ws://192.168.4.1:81');
                         await Future.delayed(const Duration(milliseconds: 500));

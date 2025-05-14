@@ -12,6 +12,30 @@ class ManageUsersScreen extends StatefulWidget {
   _ManageUsersScreenState createState() => _ManageUsersScreenState();
 }
 
+/* String formatDateOnly(String? isoDate) {
+  if (isoDate == null) return "Unknown";
+  try {
+    final parsed = DateTime.parse(isoDate);
+    return "${parsed.year}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}";
+  } catch (e) {
+    return "Invalid Date";
+  }
+} */
+String formatDateWithTime(String? isoDate) {
+  if (isoDate == null) return "Unknown";
+  try {
+    final parsed = DateTime.parse(isoDate);
+    final year = parsed.year.toString().padLeft(4, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    final day = parsed.day.toString().padLeft(2, '0');
+    final hour = parsed.hour.toString().padLeft(2, '0');
+    final minute = parsed.minute.toString().padLeft(2, '0');
+    return "$year-$month-$day • $hour:$minute";
+  } catch (e) {
+    return "Invalid Date";
+  }
+}
+
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   List<User> users = [];
   List<User> filteredUsers = [];
@@ -61,6 +85,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Future<void> fetchUsers() async {
     final fetchedUsers = await UserService().getAllUsers();
+    for (var user in fetchedUsers) {
+      print("User: ${user.name} | createdAt: ${user.createdAt}");
+    }
     setState(() {
       users = fetchedUsers;
       filteredUsers = fetchedUsers;
@@ -153,10 +180,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                 color: Colors.white,
                               ),
                             ),
+
                             title: Text(user.name),
+
                             subtitle: Text(
-                              'Role: ${user.role}\nID: ${user.nationalId}',
+                              'Role: ${user.role}\nID: ${user.nationalId}\nCreated At: ${formatDateWithTime(user.createdAt)}',
                             ),
+
                             trailing: IconButton(
                               icon: const Icon(
                                 Icons.delete,

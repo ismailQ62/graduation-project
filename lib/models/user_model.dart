@@ -1,11 +1,11 @@
 class User {
   final int? _id;
   String _name;
-  //String last_name;
   String _nationalId;
   String _password;
   String _role;
   String? _connectedZoneId;
+  String? _createdAt;
 
   User({
     int? id,
@@ -14,20 +14,25 @@ class User {
     required String password,
     required String role,
     String? connectedZoneId,
+    String? createdAt,
   }) : _id = id,
        _name = name,
        _nationalId = nationalId,
        _password = password,
        _role = role,
-       _connectedZoneId = connectedZoneId;
+       _connectedZoneId = connectedZoneId,
+       _createdAt = createdAt;
 
+  // Getters
   int? get id => _id;
   String get name => _name;
   String get nationalId => _nationalId;
   String get password => _password;
   String get role => _role;
-  String? get connectedZone => _connectedZoneId;
+  String? get connectedZone => _connectedZoneId; // ✅ kept as is
+  String? get createdAt => _createdAt;
 
+  // Setters with validation
   set name(String value) {
     if (value.isEmpty || value.length < 3) {
       throw ArgumentError("Name must be at least 3 characters long");
@@ -70,6 +75,7 @@ class User {
     _connectedZoneId = value;
   }
 
+  // Save to DB or WebSocket
   Map<String, dynamic> toMap() {
     return {
       'id': _id,
@@ -78,6 +84,19 @@ class User {
       'password': _password,
       'role': _role,
       'connectedZoneId': _connectedZoneId,
+      'createdAt': _createdAt,
+    };
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': _id,
+      'name': _name,
+      'nationalId': _nationalId,
+      'password': _password,
+      'role': _role,
+      'connectedZoneId': _connectedZoneId,
+      'createdAt': _createdAt,
     };
   }
 
@@ -88,17 +107,8 @@ class User {
     password: json['password'],
     role: json['role'],
     connectedZoneId: json['connectedZoneId'],
+    createdAt: json['createdAt'],
   );
-  Map<String, dynamic> toJson() {
-    return {
-      'id': _id,
-      'name': _name,
-      'nationalId': _nationalId,
-      'password': _password,
-      'role': _role,
-      'connectedZoneId': _connectedZoneId,
-    };
-  }
 
   factory User.fromMap(Map<String, Object?> map) => User(
     id: map['id'] as int?,
@@ -107,5 +117,6 @@ class User {
     password: map['password'] as String,
     role: map['role'] as String,
     connectedZoneId: map['connectedZoneId'] as String?,
+    createdAt: map['createdAt'] as String?,
   );
 }

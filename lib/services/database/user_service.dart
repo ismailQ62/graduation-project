@@ -1,9 +1,16 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'package:sqflite/sqflite.dart';
 
 class UserService {
   final DatabaseService _dbService = DatabaseService();
+
+  String hashPassword(String password) {
+    final bytes = utf8.encode(password);
+    return sha256.convert(bytes).toString();
+  }
 
   // Register a new user
   Future<String> registerUser(User user) async {
@@ -23,10 +30,12 @@ class UserService {
   // Login with National ID and Password
   Future<User?> loginUser(String nationalId, String password) async {
     final db = await _dbService.database;
+    final hashed = hashPassword(password);
+
     final users = await db.query(
       'users',
       where: 'nationalId = ? AND password = ?',
-      whereArgs: [nationalId, password],
+      whereArgs: [nationalId, hashed],
     );
     if (users.isNotEmpty) {
       return User(
@@ -68,20 +77,11 @@ class UserService {
     final db = await _dbService.database;
     final List<Map<String, dynamic>> maps = await db.query('users');
 
-    return List.generate(maps.length, (i) {
-      return User(
-        id: maps[i]['id'] as int?,
-        name: maps[i]['name'] as String,
-        nationalId: maps[i]['nationalId'] as String,
-        password: maps[i]['password'] as String,
-        role: maps[i]['role'] as String,
-        connectedZoneId: maps[i]['connectedZoneId'] as String?,
-      );
-    });
+    return maps.map((map) => User.fromMap(map)).toList();
   }
 
   Future<void> deleteUser(String nationalId) async {
-    final db = await _dbService.database;
+    final db = await DatabaseService().database;
     await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
   }
 

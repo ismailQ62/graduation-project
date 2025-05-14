@@ -31,7 +31,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> channelmessages = [];
   Map<String, dynamic>? _currentUser;
   final String _messageType = "Chat";
-Zone? _currentZone;
+  Zone? _currentZone;
   Zone? _receiverZone;
   WebSocketChannel? channel;
   final webSocketService = WebSocketService();
@@ -54,26 +54,28 @@ Zone? _currentZone;
     }
     webSocketService.addListener(_onWebSocketMessage);
     _channelId = widget.channel.id!;
-    print ("Channel ID: $_channelId");
+    print("Channel ID: $_channelId");
     _zoneId = widget.zone.id;
-    print ("Zone ID: $_zoneId");
+    print("Zone ID: $_zoneId");
     _currentZone = widget.zone;
 
     _loadCurrentUser();
     //debugPrintAllMessages();
     _loadMessageForChannel(_channelId, _zoneId);
   }
-Future<void> debugPrintAllMessages() async {
-  
-  final db = await _dbService.database;
-  final result = await db.query('messages');
 
-  print("=== All Messages in DB ===");
-  for (final row in result) {
-    print("Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}");
+  Future<void> debugPrintAllMessages() async {
+    final db = await _dbService.database;
+    final result = await db.query('messages');
+
+    print("=== All Messages in DB ===");
+    for (final row in result) {
+      print(
+        "Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}",
+      );
+    }
+    print("===========================");
   }
-  print("===========================");
-}
 
   void _onWebSocketMessage(Map<String, dynamic> message) async {
     final type = message['type'];
@@ -83,11 +85,11 @@ Future<void> debugPrintAllMessages() async {
       final timestamp = DateTime.now().toIso8601String();
       final msgType = message['type'] ?? 'unknown';
       final receiverZone = message['receiverZone'] ?? 'unknown';
-      
+
       if (_currentUser!['nationalId'] == senderId) {
         return;
       }
-      
+
       await _dbService.insertMessage(
         sender: senderId,
         text: content,
@@ -209,14 +211,13 @@ Future<void> debugPrintAllMessages() async {
     }
   }
 
-
   void _loadMessageForChannel(int channelId, String zoneId) async {
     List<Map<String, dynamic>> dbMessages = await _dbService
         .getMessagesForChannel(_messageType, channelId, zoneId);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
       channelmessages = _messages;
-    }); 
+    });
   }
 
   void _sendMessage() async {
@@ -247,7 +248,7 @@ Future<void> debugPrintAllMessages() async {
       try {
         //_channel?.sink.add(jsonEncode(messageJson));
         webSocketService.send(jsonEncode(messageJson));
-print("Inserting message with zoneId: $receiverZone");
+        print("Inserting message with zoneId: $receiverZone");
 
         await _dbService.insertMessage(
           sender: nationalId,
@@ -312,7 +313,9 @@ print("Inserting message with zoneId: $receiverZone");
                     _receiverZone = newZone;
                   });
                   _loadMessageForChannel(_channelId, _receiverZone!.name);
-print("Selected zone: ${_receiverZone!.name} ${_receiverZone!.id}");
+                  print(
+                    "Selected zone: ${_receiverZone!.name} ${_receiverZone!.id}",
+                  );
                 } else {
                   setState(() {
                     _receiverZone = null;

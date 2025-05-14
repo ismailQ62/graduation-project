@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:web_socket_channel/io.dart';
@@ -20,29 +19,27 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   void initState() {
     super.initState();
-
     channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
 
-    // ✅ Uncomment below for testing UI with dummy data
-    /*
-    final dummyImage = base64Decode(
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=',
-    );
-    pendingResponders.value = [
-      {'id': 'R12345', 'name': 'Ali Hammoudeh', 'imageBytes': dummyImage},
-      {'id': 'R67890', 'name': 'Sara Qasem', 'imageBytes': dummyImage},
-    ];
-    */
-
     channel.stream.listen((message) {
+      print("\ud83d\udce5 Received WebSocket: $message");
       final data = jsonDecode(message);
-      if (data['type'] == 'verification') {
-        final imageBytes = base64Decode(data['image']);
-        pendingResponders.value = List.from(pendingResponders.value)..add({
-          'id': data['senderID'] ?? 'R000',
+
+      if (data['type'] == 'license_text') {
+        final responder = {
+          'id': data['senderID'] ?? 'unknown',
           'name': data['username'] ?? 'Responder',
-          'imageBytes': imageBytes,
-        });
+          'role': data['role'] ?? 'N/A',
+          'description': data['description'] ?? '',
+        };
+
+        final currentList = List<Map<String, dynamic>>.from(
+          pendingResponders.value,
+        );
+        final isDuplicate = currentList.any((e) => e['id'] == responder['id']);
+        if (!isDuplicate) {
+          pendingResponders.value = [...currentList, responder];
+        }
       }
     });
   }
@@ -63,7 +60,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("${user['name']} approved"),
+        content: Text("${user['name']} approved \u2705"),
         backgroundColor: Colors.green,
       ),
     );
@@ -81,12 +78,41 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("${user['name']} rejected"),
+        content: Text("${user['name']} rejected \u274c"),
         backgroundColor: Colors.red,
       ),
     );
 
     pendingResponders.value = List.from(pendingResponders.value)..remove(user);
+  }
+
+  // ✅ This simulates a responder submission. You can use it in development/testing.
+  void _simulateTestResponder() {
+    final demo = {
+      'type': 'license_text',
+      'senderID': '999',
+      'username': 'Demo User',
+      'role': 'Firefighter',
+      'description': 'I have completed fire rescue training and serve Zone 3.',
+    };
+
+    final currentList = List<Map<String, dynamic>>.from(
+      pendingResponders.value,
+    );
+    final isDuplicate = currentList.any((e) => e['id'] == demo['senderID']);
+    if (!isDuplicate) {
+      pendingResponders.value = [
+        ...currentList,
+        {
+          'id': demo['senderID'],
+          'name': demo['username'],
+          'role': demo['role'],
+          'description': demo['description'],
+        },
+      ];
+    }
+
+    print("\ud83d\udd2a Simulated responder added: ${demo['username']}");
   }
 
   @override
@@ -96,6 +122,14 @@ class _VerificationScreenState extends State<VerificationScreen> {
         title: const Text('Pending Verifications'),
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
+        actions: [
+          // ✅ Demo simulation button
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: "Simulate Responder",
+            onPressed: _simulateTestResponder,
+          ),
+        ],
       ),
       body: Padding(
         padding: EdgeInsets.all(16.w),
@@ -137,34 +171,20 @@ class _VerificationScreenState extends State<VerificationScreen> {
                           "ID: ${user['id']}",
                           style: TextStyle(fontSize: 14.sp),
                         ),
-                        SizedBox(height: 12.h),
-                        user['imageBytes'] != null
-                            ? ClipRRect(
-                              borderRadius: BorderRadius.circular(10.r),
-                              child: Image.memory(
-                                user['imageBytes'] as Uint8List,
-                                width: double.infinity,
-                                height: 200.h,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                            : Container(
-                              width: double.infinity,
-                              height: 200.h,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10.r),
-                                color: Colors.grey.shade200,
-                              ),
-                              child: Text(
-                                "No image uploaded",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14.sp,
-                                ),
-                              ),
-                            ),
-                        SizedBox(height: 16.h),
+                        Text(
+                          "Role: ${user['role']}",
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          "Description:",
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          user['description'],
+                          style: TextStyle(fontSize: 14.sp),
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [

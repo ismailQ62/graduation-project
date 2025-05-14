@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
-import 'package:lorescue/services/WebSocketService.dart'; 
+import 'package:lorescue/services/WebSocketService.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,7 +88,6 @@ class MainApp extends StatelessWidget {
     );
   }
 }
-
 
 Future<void> _deleteOldDatabase() async {
   final dbPath = await getDatabasesPath();

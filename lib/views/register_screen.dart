@@ -9,31 +9,26 @@ import 'package:lorescue/services/database/user_service.dart';
 import 'dart:convert';
 import 'package:web_socket_channel/io.dart';
 import 'package:network_info_plus/network_info_plus.dart';
+import 'package:crypto/crypto.dart'; // Hashing package
+
+// Hash function using SHA-256
+String hashPassword(String password) {
+  final bytes = utf8.encode(password); // Convert password to bytes
+  final digest = sha256.convert(bytes); // Apply SHA-256 hash
+  return digest.toString(); // Return hashed string
+}
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _RegisterScreenState createState() => _RegisterScreenState();
 }
 
-/* Future<bool> ConnectedToWifi() async {
-  final info = NetworkInfo();
-
-  String? wifiName = await info.getWifiName();
-
-  if (wifiName != null && wifiName.isNotEmpty) {
-    return true;
-  } else {
-    return false;
-  }
-} */
-
+// Check if connected to Wi-Fi
 Future<bool> ConnectedToWifi() async {
   final info = NetworkInfo();
   final ssid = await info.getWifiName();
-
   return ssid != null && ssid.isNotEmpty;
 }
 
@@ -50,12 +45,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedRole;
   final List<String> roles = ["Individual", "Admin", "Responder"];
   final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
-  @override
-  void initState() {
-    super.initState();
-
-    // _channel = IOWebSocketChannel.connect(Uri.parse('ws://192.168.4.1:81'));
-  }
 
   @override
   void dispose() {
@@ -64,10 +53,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _register() async {
+    // Check Wi-Fi connection
     bool isConnectedToWifi = await ConnectedToWifi();
-    if (isConnectedToWifi) {
-      //(!) to be added
-      // Show a dialog if not connected to Wi-Fi
+    if (!isConnectedToWifi) {
+      // Show warning dialog if not connected
       showDialog(
         context: context,
         builder:
@@ -87,14 +76,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       'Please connect to any WiFi.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.black54),
                     ),
                     const SizedBox(height: 25),
                     ElevatedButton(
@@ -137,6 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // Check for existing user
     bool exists = await _userService.doesNationalIdExist(
       _nationalIdController.text,
     );
@@ -150,36 +138,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    final hashedPassword = hashPassword(_passwordController.text);
+    print("🔐 Hashed password: $hashedPassword");
+
+    final now = DateTime.now().toIso8601String();
+
+    // Create user object
     User newUser = User(
       name: _usernameController.text,
       nationalId: _nationalIdController.text,
-      password: _passwordController.text,
+      password: hashedPassword,
       role: _selectedRole!,
       connectedZoneId: "0",
+      createdAt: now,
     );
 
     await _userService.registerUser(newUser);
 
+    // Prepare JSON to send via WebSocket
     Map<String, dynamic> accountData = {
       "type": "register",
       "name": _usernameController.text,
       "national_id": _nationalIdController.text,
-      "password": _passwordController.text,
+      "password": hashedPassword,
       "role": _selectedRole,
       "connectedZoneId": "0",
+      "createdAt": now,
     };
+
+    _channel.sink.add(jsonEncode(accountData));
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text("Registration successful!  "),
+        content: Text("Registration successful!"),
         backgroundColor: Colors.green,
       ),
     );
-    // Send the account data to the WebSocket server
-    String jsonData = jsonEncode(accountData);
 
-    _channel.sink.add(jsonData);
-
+    // Navigate to login after delay
     Future.delayed(const Duration(seconds: 1), () {
       Navigator.pushNamed(context, AppRoutes.login);
     });
@@ -189,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: Color.fromRGBO(247, 247, 246, 1),
+      backgroundColor: const Color.fromRGBO(247, 247, 246, 1),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 24.w),
@@ -199,13 +195,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-
                 Image.asset(
                   'assets/images/logo.png',
                   width: 120.w,
                   height: 120.h,
                 ),
-
                 SizedBox(height: 20.h),
                 Text(
                   "Register",
@@ -221,34 +215,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 SizedBox(height: 30.h),
 
+                // Username
                 CustomTextField(
                   label: "Username",
                   controller: _usernameController,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return "Username is required";
-                    }
                     return null;
                   },
                 ),
                 SizedBox(height: 15.h),
 
+                // National ID
                 CustomTextField(
                   label: "National ID",
                   controller: _nationalIdController,
                   isNumber: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return "National ID is required";
-                    }
-                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
+                    if (!RegExp(r'^\d{10}$').hasMatch(value))
                       return "National ID must be exactly 10 digits";
-                    }
                     return null;
                   },
                 ),
                 SizedBox(height: 15.h),
 
+                // Role Dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedRole,
                   decoration: InputDecoration(
@@ -258,66 +252,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                   ),
                   items:
-                      roles.map((role) {
-                        return DropdownMenuItem(value: role, child: Text(role));
-                      }).toList(),
+                      roles
+                          .map(
+                            (role) => DropdownMenuItem(
+                              value: role,
+                              child: Text(role),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (value) => setState(() => _selectedRole = value),
-                  validator: (value) {
-                    if (value == null) {
-                      return "Please select a role";
-                    }
-                    return null;
-                  },
+                  validator:
+                      (value) => value == null ? "Please select a role" : null,
                 ),
-
                 SizedBox(height: 15.h),
 
+                // Password
                 CustomTextField(
                   label: "Create Password",
                   controller: _passwordController,
                   isPassword: true,
                   validator: (value) {
-                    // ignore: unused_label
-                    validator:
-                    (value) {
-                      if (value == null || value.isEmpty) {
-                        return "Password is required";
-                      }
-                      if (value.length < 8) {
-                        return "Password must be at least 8 characters";
-                      }
-                      if (!RegExp(r'(?=.*[a-z])').hasMatch(value)) {
-                        return "Password must contain a lowercase letter";
-                      }
-                      if (!RegExp(r'(?=.*[A-Z])').hasMatch(value)) {
-                        return "Password must contain an uppercase letter";
-                      }
-                      if (!RegExp(r'(?=.*[!@#\$&*~%^])').hasMatch(value)) {
-                        return "Password must include a special character";
-                      }
-                      return null;
-                    };
+                    if (value == null || value.isEmpty)
+                      return "Password is required";
+                    if (value.length < 8)
+                      return "Password must be at least 8 characters";
+                    if (!RegExp(r'(?=.*[a-z])').hasMatch(value))
+                      return "Include a lowercase letter";
+                    if (!RegExp(r'(?=.*[A-Z])').hasMatch(value))
+                      return "Include an uppercase letter";
+                    if (!RegExp(r'(?=.*[!@#\$&*~%^])').hasMatch(value))
+                      return "Include a special character";
                     return null;
                   },
                 ),
                 SizedBox(height: 15.h),
 
+                // Confirm Password
                 CustomTextField(
                   label: "Confirm Password",
                   controller: _confirmPasswordController,
                   isPassword: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return "Please confirm your password";
-                    }
                     return null;
                   },
                 ),
                 SizedBox(height: 20.h),
 
                 CustomButton(text: "Sign up", onPressed: _register),
-
                 SizedBox(height: 15.h),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

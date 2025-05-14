@@ -7,7 +7,6 @@ import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/database/user_service.dart';
 
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -32,14 +31,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (user != null) {
       // Set the current user national ID
       AuthService.setCurrentUser(user);
-      user.connectedZone ; // Demo for connected zone
+      user.connectedZone; // Demo for connected zone
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      /*  ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Login successful! Welcome, ${user.name} Role: ${user.role} Zone: ${user.connectedZone}"),
+          content: Text(
+            "Login successful! Welcome, ${user.name} Role: ${user.role} Zone: ${user.connectedZone}",
+          ),
           backgroundColor: Colors.green,
         ),
-      );
+      ); */
 
       // Redirect based on role
       if (user.role == 'Admin') {
@@ -73,13 +74,11 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-
                 Image.asset(
                   'assets/images/logo.png',
                   width: 120.w,
                   height: 120.h,
                 ),
-
                 SizedBox(height: 20.h),
                 Text(
                   "Welcome to LoRescue",
@@ -94,7 +93,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: TextStyle(fontSize: 16.sp, color: Colors.grey),
                 ),
                 SizedBox(height: 30.h),
-
                 CustomTextField(
                   label: "National ID",
                   controller: _nationalIdController,
@@ -110,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 SizedBox(height: 15.h),
-
                 CustomTextField(
                   label: "Password",
                   controller: _passwordController,
@@ -131,7 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                 ),
                 SizedBox(height: 10.h),
-
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -142,13 +138,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-
                 SizedBox(height: 20.h),
-
                 CustomButton(text: "Login", onPressed: _login),
-
                 SizedBox(height: 15.h),
-
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [

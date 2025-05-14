@@ -14,7 +14,7 @@ class DatabaseService {
     final path = join(dbPath, 'lorescue.db');
     return await openDatabase(
       path,
-      version: 6, // Incremented version
+      version: 7, // Incremented version
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -38,7 +38,8 @@ class DatabaseService {
         password TEXT,
         connectedZoneId TEXT,
         credential TEXT,
-        verified INTEGER NOT NULL DEFAULT 0
+        verified INTEGER NOT NULL DEFAULT 0,
+        createdAt TEXT
       )
     ''');
 
@@ -98,7 +99,7 @@ class DatabaseService {
       'zoneId': receiverZone,
       'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-    print ('Message inserted: $sender, $text, $type, $receiverZone, $channelId');
+    print('Message inserted: $sender, $text, $type, $receiverZone, $channelId');
   }
 
   Future<List<Map<String, dynamic>>> getMessages(String type) async {

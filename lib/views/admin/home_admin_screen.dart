@@ -84,7 +84,7 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
             IconButton(
               icon: Icon(Icons.home, size: 28.sp),
               onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.verification);
+                Navigator.pushNamed(context, AppRoutes.homeAdmin);
               },
             ),
             IconButton(
