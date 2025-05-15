@@ -59,13 +59,22 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                           ),
                         ),
                   ),
+                  _buildCategoryBox(
+                    context,
+                    icon: Icons.block,
+                    label: "Blocked Users",
+                    onTap:
+                        () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.blockedUsers,
+                        ),
+                  ),
                 ],
               ),
             ),
           ],
         ),
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.pushNamed(context, AppRoutes.manageUsers);
@@ -74,7 +83,6 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
         child: const Icon(Icons.supervisor_account, color: Colors.white),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
@@ -93,7 +101,7 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                 Navigator.pushNamed(context, AppRoutes.manageChannel);
               },
             ),
-            const SizedBox(width: 48),
+            const SizedBox(width: 48), // Space for FAB
             IconButton(
               icon: Icon(Icons.map, size: 28.sp),
               onPressed: () {

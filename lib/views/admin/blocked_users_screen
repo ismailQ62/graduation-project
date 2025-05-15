@@ -1,0 +1,153 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:lorescue/services/database/user_service.dart';
+import 'package:lorescue/models/user_model.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+
+class BlockedUsersScreen extends StatefulWidget {
+  const BlockedUsersScreen({super.key});
+
+  @override
+  State<BlockedUsersScreen> createState() => _BlockedUsersScreenState();
+}
+
+class _BlockedUsersScreenState extends State<BlockedUsersScreen> {
+  List<User> blockedUsers = [];
+  late WebSocketChannel _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+    loadBlockedUsers();
+  }
+
+  @override
+  void dispose() {
+    _channel.sink.close();
+    super.dispose();
+  }
+
+  Future<void> loadBlockedUsers() async {
+    final allUsers = await UserService().getAllUsers();
+    final blocked = allUsers.where((u) => u.isBlocked).toList();
+
+    setState(() {
+      blockedUsers = blocked;
+    });
+  }
+
+  Future<void> unblockUser(User user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Unblock User"),
+        content: Text("Are you sure you want to unblock ${user.name}?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text("Unblock"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await UserService().unblockUser(user.nationalId);
+
+      // ✅ Send unblock message to ESP
+      final payload = {
+        "type": "unblock",
+        "id": user.nationalId,
+        "role": user.role,
+      };
+      print(jsonEncode(payload));
+      _channel.sink.add(jsonEncode(payload));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("${user.name} has been unblocked.")),
+      );
+      await loadBlockedUsers();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Blocked Users"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: loadBlockedUsers,
+          ),
+        ],
+      ),
+      body: blockedUsers.isEmpty
+          ? const Center(
+              child: Text(
+                "No blocked users.",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+              ),
+            )
+          : ListView.builder(
+              itemCount: blockedUsers.length,
+              itemBuilder: (context, index) {
+                final user = blockedUsers[index];
+                return Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.block, color: Colors.red, size: 32),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text("Role: ${user.role}"),
+                              Text("ID: ${user.nationalId}"),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.lock_open),
+                          label: const Text("Unblock"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => unblockUser(user),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}

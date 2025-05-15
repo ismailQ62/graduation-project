@@ -4,9 +4,17 @@ import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'package:sqflite/sqflite.dart';
 
+class LoginResult {
+  final User? user;
+  final String? error;
+
+  LoginResult({this.user, this.error});
+}
+
 class UserService {
   final DatabaseService _dbService = DatabaseService();
 
+  // Hash password using SHA-256
   String hashPassword(String password) {
     final bytes = utf8.encode(password);
     return sha256.convert(bytes).toString();
@@ -27,7 +35,36 @@ class UserService {
     return 'Registration successful!';
   }
 
-  // Login with National ID and Password
+  // New: Login with result (success or error reason)
+  Future<LoginResult> loginUserWithResult(
+    String nationalId,
+    String password,
+  ) async {
+    final db = await _dbService.database;
+    final hashed = hashPassword(password);
+
+    final users = await db.query(
+      'users',
+      where: 'nationalId = ? AND password = ?',
+      whereArgs: [nationalId, hashed],
+    );
+
+    if (users.isNotEmpty) {
+      final user = User.fromMap(users.first);
+
+      if (user.isBlocked) {
+        return LoginResult(
+          error: "This account has been blocked by the admin.",
+        );
+      }
+
+      return LoginResult(user: user);
+    }
+
+    return LoginResult(error: "Invalid National ID or Password.");
+  }
+
+  // Standard login (if you still need it)
   Future<User?> loginUser(String nationalId, String password) async {
     final db = await _dbService.database;
     final hashed = hashPassword(password);
@@ -37,16 +74,13 @@ class UserService {
       where: 'nationalId = ? AND password = ?',
       whereArgs: [nationalId, hashed],
     );
+
     if (users.isNotEmpty) {
-      return User(
-        id: users.first['id'] as int?,
-        name: users.first['name'] as String,
-        nationalId: users.first['nationalId'] as String,
-        password: users.first['password'] as String,
-        role: users.first['role'] as String,
-        connectedZoneId: users.first['connectedZoneId'] as String?,
-      );
+      final user = User.fromMap(users.first);
+      if (user.isBlocked) return null;
+      return user;
     }
+
     return null;
   }
 
@@ -76,15 +110,16 @@ class UserService {
   Future<List<User>> getAllUsers() async {
     final db = await _dbService.database;
     final List<Map<String, dynamic>> maps = await db.query('users');
-
     return maps.map((map) => User.fromMap(map)).toList();
   }
 
+  // Delete a user by national ID
   Future<void> deleteUser(String nationalId) async {
-    final db = await DatabaseService().database;
+    final db = await _dbService.database;
     await db.delete('users', where: 'nationalId = ?', whereArgs: [nationalId]);
   }
 
+  // Insert or replace a user
   Future<void> insertUser(User user) async {
     final db = await _dbService.database;
     await db.insert(
@@ -94,8 +129,31 @@ class UserService {
     );
   }
 
+  // Delete all users from the database
   Future<void> deleteAllUsers() async {
     final db = await _dbService.database;
     await db.delete('users');
+  }
+
+  // Block a user
+  Future<void> blockUser(String nationalId) async {
+    final db = await _dbService.database;
+    await db.update(
+      'users',
+      {'isBlocked': 1},
+      where: 'nationalId = ?',
+      whereArgs: [nationalId],
+    );
+  }
+
+  // Unblock a user
+  Future<void> unblockUser(String nationalId) async {
+    final db = await _dbService.database;
+    await db.update(
+      'users',
+      {'isBlocked': 0},
+      where: 'nationalId = ?',
+      whereArgs: [nationalId],
+    );
   }
 }

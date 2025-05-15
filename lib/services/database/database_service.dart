@@ -14,7 +14,7 @@ class DatabaseService {
     final path = join(dbPath, 'lorescue.db');
     return await openDatabase(
       path,
-      version: 7, // Incremented version
+      version: 8, // Incremented version
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -39,7 +39,8 @@ class DatabaseService {
         connectedZoneId TEXT,
         credential TEXT,
         verified INTEGER NOT NULL DEFAULT 0,
-        createdAt TEXT
+        createdAt TEXT,
+        isBlocked INTEGER NOT NULL DEFAULT 0
       )
     ''');
 

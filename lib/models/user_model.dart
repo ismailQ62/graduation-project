@@ -6,6 +6,7 @@ class User {
   String _role;
   String? _connectedZoneId;
   String? _createdAt;
+  final bool _isBlocked;
 
   User({
     int? id,
@@ -15,13 +16,15 @@ class User {
     required String role,
     String? connectedZoneId,
     String? createdAt,
+    bool isBlocked = false,
   }) : _id = id,
        _name = name,
        _nationalId = nationalId,
        _password = password,
        _role = role,
        _connectedZoneId = connectedZoneId,
-       _createdAt = createdAt;
+       _createdAt = createdAt,
+       _isBlocked = isBlocked;
 
   // Getters
   int? get id => _id;
@@ -29,10 +32,10 @@ class User {
   String get nationalId => _nationalId;
   String get password => _password;
   String get role => _role;
-  String? get connectedZone => _connectedZoneId; // ✅ kept as is
+  String? get connectedZone => _connectedZoneId;
   String? get createdAt => _createdAt;
+  bool get isBlocked => _isBlocked;
 
-  // Setters with validation
   set name(String value) {
     if (value.isEmpty || value.length < 3) {
       throw ArgumentError("Name must be at least 3 characters long");
@@ -75,7 +78,6 @@ class User {
     _connectedZoneId = value;
   }
 
-  // Save to DB or WebSocket
   Map<String, dynamic> toMap() {
     return {
       'id': _id,
@@ -85,6 +87,7 @@ class User {
       'role': _role,
       'connectedZoneId': _connectedZoneId,
       'createdAt': _createdAt,
+      'isBlocked': _isBlocked ? 1 : 0,
     };
   }
 
@@ -97,6 +100,7 @@ class User {
       'role': _role,
       'connectedZoneId': _connectedZoneId,
       'createdAt': _createdAt,
+      'isBlocked': _isBlocked ? 1 : 0,
     };
   }
 
@@ -108,6 +112,7 @@ class User {
     role: json['role'],
     connectedZoneId: json['connectedZoneId'],
     createdAt: json['createdAt'],
+    isBlocked: (json['isBlocked'] ?? 0) == 1,
   );
 
   factory User.fromMap(Map<String, Object?> map) => User(
@@ -118,5 +123,6 @@ class User {
     role: map['role'] as String,
     connectedZoneId: map['connectedZoneId'] as String?,
     createdAt: map['createdAt'] as String?,
+    isBlocked: (map['isBlocked'] ?? 0) == 1,
   );
 }

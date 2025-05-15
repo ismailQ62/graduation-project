@@ -23,15 +23,16 @@ class _LoginScreenState extends State<LoginScreen> {
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
 
-    User? user = await _userService.loginUser(
+    // ✅ Use the new loginUserWithResult method to get detailed feedback
+    final result = await _userService.loginUserWithResult(
       _nationalIdController.text,
       _passwordController.text,
     );
 
-    if (user != null) {
+    if (result.user != null) {
       // Set the current user national ID
-      AuthService.setCurrentUser(user);
-      user.connectedZone; // Demo for connected zone
+      AuthService.setCurrentUser(result.user!);
+      result.user!.connectedZone; // Demo for connected zone
 
       /*  ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -43,17 +44,18 @@ class _LoginScreenState extends State<LoginScreen> {
       ); */
 
       // Redirect based on role
-      if (user.role == 'Admin') {
+      if (result.user!.role == 'Admin') {
         Navigator.pushNamed(context, AppRoutes.homeAdmin);
-      } else if (user.role == 'Responder') {
+      } else if (result.user!.role == 'Responder') {
         Navigator.pushNamed(context, AppRoutes.homeResponder);
       } else {
         Navigator.pushNamed(context, AppRoutes.home);
       }
     } else {
+      // ✅ Show appropriate error message for invalid or blocked users
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Invalid National ID or Password"),
+        SnackBar(
+          content: Text(result.error ?? "Login failed."),
           backgroundColor: Colors.red,
         ),
       );

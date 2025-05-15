@@ -12,15 +12,6 @@ class ManageUsersScreen extends StatefulWidget {
   _ManageUsersScreenState createState() => _ManageUsersScreenState();
 }
 
-/* String formatDateOnly(String? isoDate) {
-  if (isoDate == null) return "Unknown";
-  try {
-    final parsed = DateTime.parse(isoDate);
-    return "${parsed.year}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}";
-  } catch (e) {
-    return "Invalid Date";
-  }
-} */
 String formatDateWithTime(String? isoDate) {
   if (isoDate == null) return "Unknown";
   try {
@@ -39,6 +30,7 @@ String formatDateWithTime(String? isoDate) {
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   List<User> users = [];
   List<User> filteredUsers = [];
+  bool isLoading = false;
   TextEditingController searchController = TextEditingController();
   late WebSocketChannel _channel;
 
@@ -46,26 +38,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   void initState() {
     super.initState();
     _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
-
-    _channel.stream.listen((message) async {
-      final data = jsonDecode(message);
-
-      // 🔁 Trigger simple reload
-      if (data["type"] == "trigger_user_sync") {
-        fetchUsers();
-      }
-
-      // 📥 Sync full user list
-      if (data["type"] == "sync_users" && data["users"] != null) {
-        final List<dynamic> receivedUsers = data["users"];
-        await UserService().deleteAllUsers(); // clear local db
-        for (var u in receivedUsers) {
-          await UserService().insertUser(User.fromJson(u));
-        }
-        fetchUsers(); // reload UI
-      }
-    });
-
     fetchUsers(); // initial load
   }
 
@@ -76,7 +48,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     super.dispose();
   }
 
-  // 🔄 Admin shares users with others
   void broadcastUserList(List<User> users) {
     final userListJson = users.map((u) => u.toJson()).toList();
     final payload = {"type": "sync_users", "users": userListJson};
@@ -84,16 +55,22 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   Future<void> fetchUsers() async {
+    setState(() => isLoading = true);
+
+    print("🔄 Reloading users at ${DateTime.now()}");
     final fetchedUsers = await UserService().getAllUsers();
-    for (var user in fetchedUsers) {
-      print("User: ${user.name} | createdAt: ${user.createdAt}");
-    }
+    print("📦 Users fetched: ${fetchedUsers.length}");
+
     setState(() {
       users = fetchedUsers;
       filteredUsers = fetchedUsers;
     });
 
-    broadcastUserList(fetchedUsers); // Notify others with user data
+    broadcastUserList(fetchedUsers);
+    print("📡 Users broadcasted to ESP.");
+
+    await Future.delayed(const Duration(milliseconds: 500));
+    setState(() => isLoading = false);
   }
 
   void searchUsers(String query) {
@@ -113,20 +90,15 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
     });
   }
 
-  Future<void> deleteUser(User user) async {
-    await UserService().deleteUser(user.nationalId);
-
-    final payload = {
-      "type": "delete_user",
-      "id": user.nationalId,
-      "role": user.role,
-    };
+  Future<void> blockUser(User user) async {
+    final payload = {"type": "block", "id": user.nationalId, "role": user.role};
     _channel.sink.add(jsonEncode(payload));
+    await UserService().blockUser(user.nationalId);
 
-    fetchUsers();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("${user.name} deleted successfully!")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("${user.name} has been blocked.")));
+    await fetchUsers();
   }
 
   @override
@@ -135,7 +107,27 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       appBar: AppBar(
         title: const Text('Manage Users'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: fetchUsers),
+          isLoading
+              ? const Padding(
+                padding: EdgeInsets.all(12.0),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                ),
+              )
+              : IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: () async {
+                  await fetchUsers();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Users synced .")),
+                  );
+                },
+              ),
         ],
       ),
       body: Column(
@@ -180,26 +172,23 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                 color: Colors.white,
                               ),
                             ),
-
                             title: Text(user.name),
-
                             subtitle: Text(
                               'Role: ${user.role}\nID: ${user.nationalId}\nCreated At: ${formatDateWithTime(user.createdAt)}',
                             ),
-
                             trailing: IconButton(
                               icon: const Icon(
-                                Icons.delete,
-                                color: Colors.redAccent,
+                                Icons.block,
+                                color: Colors.orange,
                               ),
                               onPressed: () {
                                 showDialog(
                                   context: context,
                                   builder:
                                       (context) => AlertDialog(
-                                        title: const Text('Delete User'),
+                                        title: const Text('Block User'),
                                         content: Text(
-                                          'Are you sure you want to delete ${user.name}?',
+                                          'Are you sure you want to block ${user.name}?',
                                         ),
                                         actions: [
                                           TextButton(
@@ -210,9 +199,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                                           ElevatedButton(
                                             onPressed: () {
                                               Navigator.pop(context);
-                                              deleteUser(user);
+                                              blockUser(user);
                                             },
-                                            child: const Text('Delete'),
+                                            child: const Text('Block'),
                                           ),
                                         ],
                                       ),
