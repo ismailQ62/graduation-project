@@ -103,6 +103,8 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
       final type = decoded['type'] ?? '';
       final senderZone = decoded['senderZone'] ?? '';
       final receiverZone = decoded['receiverZone'] ?? '';
+      final latitude = decoded['lat'] ?? '';
+      final longitude = decoded['lng'] ?? '';
       //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
 
       if (type == 'ZonesCheck') {
@@ -114,6 +116,8 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
               if (zone.name == senderZone) {
                 setState(() {
                   zone.status = 'Connected ✅';
+                  zone.latitude = latitude;
+                  zone.longitude = longitude;
                   print('$zone is connected\n');
                 });
               } 
@@ -253,7 +257,7 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
                           child: ListTile(
                             title: Text(zone.name),
                             subtitle: Text(
-                              'ID: ${zone.id}\tStatus: ${zone.status}',
+                              'ID: ${zone.id}\tStatus: ${zone.status}\n Latitude: ${zone.latitude}\tLongitude: ${zone.longitude}',
                             ),
                             trailing: IconButton(
                               icon: const Icon(

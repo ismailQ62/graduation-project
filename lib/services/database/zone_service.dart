@@ -11,7 +11,7 @@ class ZoneService {
     final List<Map<String, dynamic>> maps = await db.query('zones');
 
     return List.generate(maps.length, (i) {
-      return Zone(id: maps[i]['id'] as String, name: maps[i]['name'] as String, status: maps[i]['status'] as String, latitude: maps[i]['latitude'] as String, longitude: maps[i]['longitude'] as String);
+      return Zone(id: maps[i]['id'] as String, name: maps[i]['name'] as String, status: maps[i]['status'] as String, latitude: maps[i]['latitude'], longitude: maps[i]['longitude']);
     });
   }
 

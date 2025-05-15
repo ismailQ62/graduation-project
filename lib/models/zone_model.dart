@@ -2,8 +2,8 @@ class Zone {
   String id;
   String name;
   String status = 'Disconnected';
-  String latitude = '0';
-  String longitude = '0';
+  double latitude = 0.0;
+  double longitude = 0.0;
 
   Zone({required this.id, required this.name, status, latitude, longitude});
   Map<String, dynamic> toMap() {

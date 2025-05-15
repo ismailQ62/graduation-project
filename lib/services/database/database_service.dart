@@ -68,7 +68,9 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS zones (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
-        status TEXT NOT NULL
+        status TEXT NOT NULL,
+        latitude REAL NOT NULL,
+        longitude REAL NOT NULL
       )
     ''');
 
