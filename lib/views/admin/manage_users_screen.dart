@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/database/user_service.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:web_socket_channel/io.dart';
@@ -33,18 +34,70 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   bool isLoading = false;
   TextEditingController searchController = TextEditingController();
   late WebSocketChannel _channel;
+  final webSocketService = WebSocketService();
+  final userservice = UserService();
 
   @override
   void initState() {
     super.initState();
-    _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
-    fetchUsers(); // initial load
+    //_channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+
+    if (!webSocketService.isConnected) {
+      print('🔌 WebSocket not connected. Connecting...');
+      webSocketService.connect('ws://192.168.4.1:81');
+    } else {
+      print('✅ WebSocket already connected.');
+    }
+    _listenToWebSocket();
+
+    fetchUsers();
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
+    try {
+      final type = decoded['type'] ?? '';
+      final national_id = decoded['national_id'] ?? '';
+      final name = decoded['name'] ?? '';
+      final role = decoded['role'] ?? '';
+      final zoneID = decoded['zoneID'] ?? '';
+      //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
+
+      if (type == 'NewUser') {
+        setState(() {
+          if (!users.any((z) => z.nationalId == national_id)) {
+            final newUser = User(
+              name: name,
+              nationalId: national_id,
+              password: " ",
+              role: role,
+              connectedZoneId: zoneID,
+            );
+
+            addUser(newUser);
+          }
+        });
+      }
+    } catch (e) {
+      print("Error handling WebSocket message: $e");
+    }
+  }
+
+  void _listenToWebSocket() {
+    WebSocketService().addListener(_handleWebSocketMessage);
+  }
+
+  void addUser(User user) async {
+    await userservice.insertUser(user);
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("New user added successfully!")));
   }
 
   @override
   void dispose() {
-    _channel.sink.close();
+    //_channel.sink.close();
     searchController.dispose();
+     WebSocketService().removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
