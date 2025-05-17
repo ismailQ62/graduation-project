@@ -81,7 +81,10 @@ class DatabaseService {
       await db.insert('channels', {'id': 1, 'name': 'Main Channel'});
     }
     if (!existingIds.contains(2)) {
-      await db.insert('channels', {'id': 2, 'name': 'News Channel'});
+      await db.insert('channels', {'id': 2, 'name': 'Alert Channel'});
+    }
+    if (!existingIds.contains(3)) {
+      await db.insert('channels', {'id': 3, 'name': 'News Channel'});
     }
   }
 

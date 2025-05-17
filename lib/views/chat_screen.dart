@@ -204,7 +204,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final user = AuthService.getCurrentUser();
     if (user != null) {
       setState(() {
-        _currentUser = {'nationalId': user.nationalId, 'name': user.name};
+        _currentUser = {
+          'nationalId': user.nationalId,
+          'name': user.name,
+          'role': user.role, // ✅ Add role here
+        };
       });
     } else {
       debugPrint("No current user found.");
@@ -222,12 +226,26 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() async {
     if (_controller.text.isNotEmpty && _currentUser != null) {
+      final String role = _currentUser!['role'] ?? 'Unknown';
+
+      // Block non-Responders from sending in Alert Channel
+      if (_channelId == 2 && role != 'Responder') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Only Responders can send messages in Alert Channel.',
+            ),
+          ),
+        );
+        return;
+      }
+
       String content = _controller.text.trim();
       DateTime now = DateTime.now();
 
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
-      String zoneId = _zoneId; // Use the current zone name
+      String zoneId = _zoneId;
       String receiverZone = _receiverZone?.name ?? _zoneId;
 
       Map<String, dynamic> messageJson = {
@@ -235,20 +253,19 @@ class _ChatScreenState extends State<ChatScreen> {
         "senderID": nationalId,
         "username": username,
         "date":
-            "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}",
+            "\${now.year}-\${now.month.toString().padLeft(2, '0')}-\${now.day.toString().padLeft(2, '0')}",
         "time":
-            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
+            "\${now.hour.toString().padLeft(2, '0')}:\${now.minute.toString().padLeft(2, '0')}:\${now.second.toString().padLeft(2, '0')}",
         "content": content,
         "channelID": _channelId.toString(),
         "zoneId": zoneId,
         "receiverZone": receiverZone,
-        "gps": "32.1234,36.5678", // Replace with actual GPS
+        "gps": "32.1234,36.5678",
       };
 
       try {
-        //_channel?.sink.add(jsonEncode(messageJson));
         webSocketService.send(jsonEncode(messageJson));
-        print("Inserting message with zoneId: $receiverZone");
+        print("Inserting message with zoneId: \$receiverZone");
 
         await _dbService.insertMessage(
           sender: nationalId,
@@ -272,7 +289,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
         _controller.clear();
       } catch (e) {
-        debugPrint('Error sending message: $e');
+        debugPrint('Error sending message: \$e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to send message. Please try again.')),
         );
@@ -387,23 +404,29 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    decoration: const InputDecoration(
-                      labelText: "Type a message",
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
+            child: buildMessageInput(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildMessageInput() {
+    if (_channelId == 2 && _currentUser?['role'] != 'Responder') {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              decoration: const InputDecoration(labelText: "Type a message"),
             ),
           ),
+          IconButton(icon: const Icon(Icons.send), onPressed: _sendMessage),
         ],
       ),
     );
