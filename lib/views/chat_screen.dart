@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lorescue/models/message_model.dart';
 import 'package:lorescue/services/WebSocketService.dart';
-import 'package:lorescue/services/database/user_service.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'dart:convert';
@@ -25,7 +23,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final TextEditingController _controller = TextEditingController();
   final DatabaseService _dbService = DatabaseService();
-  //final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
   IOWebSocketChannel? _channel;
   List<Map<String, dynamic>> _messages = [];
   List<Map<String, dynamic>> channelmessages = [];
@@ -45,42 +42,37 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    //_connectWebSocket();
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
-    webSocketService.addListener(_onWebSocketMessage);
+    _listenToWebSocket();
     _channelId = widget.channel.id!;
-    print("Channel ID: $_channelId");
     _zoneId = widget.zone.id;
-    print("Zone ID: $_zoneId");
     _currentZone = widget.zone;
-
     _loadCurrentUser();
-    //debugPrintAllMessages();
     _loadMessageForChannel(_channelId, _zoneId);
+  }
+
+  void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+    WebSocketService().addListener(_handleWebSocketMessage);
   }
 
   Future<void> debugPrintAllMessages() async {
     final db = await _dbService.database;
     final result = await db.query('messages');
 
-    print("=== All Messages in DB ===");
+    //print("=== All Messages in DB ===");
     for (final row in result) {
-      print(
-        "Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}",
-      );
+      //print("Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}",);
     }
-    print("===========================");
+    //print("===========================");
   }
 
-  void _onWebSocketMessage(Map<String, dynamic> message) async {
+  void _handleWebSocketMessage(Map<String, dynamic> message) async {
     final type = message['type'];
     if (type == 'Chat') {
       final senderId = message['senderID'] ?? "ESP32";
+      final senderName = message['username'] ?? "Unknown Sender";
       final content = message['content'] ?? 'No content';
       final timestamp = DateTime.now().toIso8601String();
       final msgType = message['type'] ?? 'unknown';
@@ -91,8 +83,10 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       await _dbService.insertMessage(
-        sender: senderId,
-        text: content,
+        senderId: senderId,
+        senderName: senderName,
+        receiverId: '',
+        content: content,
         timestamp: timestamp,
         type: msgType,
         channelId: _channelId,
@@ -101,12 +95,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
       setState(() {
         _messages.add({
-          'sender': senderId,
-          'text': content,
+          'senderId': senderId,
+          'senderName': senderName,
+          'content': content,
           'timestamp': timestamp,
           'type': msgType,
           'channelId': _channelId,
-          'receiverZoneId': receiverZone,
+          'receiverZone': receiverZone,
         });
         _loadMessageForChannel(_channelId, receiverZone);
       });
@@ -125,14 +120,17 @@ class _ChatScreenState extends State<ChatScreen> {
           debugPrint("Message received: $message");
           final jsonMessage = jsonDecode(message);
           final senderId = jsonMessage["senderID"] ?? "ESP32";
+          final senderName = jsonMessage["username"] ?? "Unknown Sender";
           final content = jsonMessage["content"] ?? message;
           final timestamp = DateTime.now().toIso8601String();
           final msgType = jsonMessage["type"] ?? "unknown";
           final receiverZone = jsonMessage["receiverZone"] ?? "unknown";
 
           await _dbService.insertMessage(
-            sender: senderId,
-            text: content,
+            senderId: senderId,
+            senderName: senderName,
+            receiverId: '',
+            content: content,
             timestamp: timestamp,
             type: msgType,
             channelId: _channelId,
@@ -141,12 +139,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
           setState(() {
             _messages.add({
-              'sender': senderId,
-              'text': content,
+              'senderId': senderId,
+              'senderName': senderName,
+              'content': content,
               'timestamp': timestamp,
               'type': msgType,
               'channelId': _channelId,
-              'receiverZoneId': receiverZone,
+              'receiverZone': receiverZone,
             });
             _loadMessageForChannel(_channelId, receiverZone);
           });
@@ -207,7 +206,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _currentUser = {
           'nationalId': user.nationalId,
           'name': user.name,
-          'role': user.role, // ✅ Add role here
+          'role': user.role,
         };
       });
     } else {
@@ -242,7 +241,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
       String content = _controller.text.trim();
       DateTime now = DateTime.now();
-
       String nationalId = _currentUser!['nationalId'];
       String username = _currentUser!['name'];
       String zoneId = _zoneId;
@@ -260,16 +258,16 @@ class _ChatScreenState extends State<ChatScreen> {
         "channelID": _channelId.toString(),
         "zoneId": zoneId,
         "receiverZone": receiverZone,
-        "gps": "32.1234,36.5678",
+        "location": "32.1234,36.5678",
       };
 
       try {
         webSocketService.send(jsonEncode(messageJson));
-        print("Inserting message with zoneId: \$receiverZone");
-
         await _dbService.insertMessage(
-          sender: nationalId,
-          text: content,
+          senderId: nationalId,
+          senderName: username,
+          receiverId: '',
+          content: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
           channelId: _channelId,
@@ -278,12 +276,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
         setState(() {
           _messages.add({
-            'sender': nationalId,
-            'text': content,
+            'senderId': nationalId,
+            'senderName': username,
+            'content': content,
             'timestamp': now.toIso8601String(),
             'type': _messageType,
             'channelId': _channelId,
-            'receiverZoneId': receiverZone,
+            'receiverZone': receiverZone,
           });
         });
 
@@ -299,16 +298,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
-    //_channel?.sink.close();
-    webSocketService.removeListener(_onWebSocketMessage);
-
+    webSocketService.removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final channel = widget.channel;
-
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -330,15 +326,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     _receiverZone = newZone;
                   });
                   _loadMessageForChannel(_channelId, _receiverZone!.name);
-                  print(
-                    "Selected zone: ${_receiverZone!.name} ${_receiverZone!.id}",
-                  );
+                  //print("Selected zone: ${_receiverZone!.name} ${_receiverZone!.id}",);
                 } else {
                   setState(() {
                     _receiverZone = null;
                   });
                   _loadMessageForChannel(_channelId, _zoneId);
-                  print("Selected zone: ${_currentZone!.name}");
+                  //print("Selected zone: ${_currentZone!.name}");
                 }
               },
             ),
@@ -355,10 +349,9 @@ class _ChatScreenState extends State<ChatScreen> {
               itemCount: channelmessages.length,
               itemBuilder: (context, index) {
                 final message = channelmessages[index];
-                final senderId =
-                    message['sender'] ?? message['senderId'] ?? 'Unknown';
-                final content =
-                    message['text'] ?? message['content'] ?? 'No content';
+                final senderId = message['senderId'] ?? 'Unknown';
+                final senderName = message['senderName'] ?? 'Unknown Sender';
+                final content = message['content'] ?? 'No content';
                 final timestamp = message['timestamp'];
                 final receiverZoneId =
                     message['receiverZoneId'] ??
@@ -383,7 +376,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "$senderId@$receiverZoneId:",
+                          "$senderName@$receiverZoneId:",
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(content),
@@ -415,7 +408,6 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_channelId == 2 && _currentUser?['role'] != 'Responder') {
       return const SizedBox.shrink();
     }
-
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(

@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/database/user_service.dart';
 import 'package:lorescue/models/user_model.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
@@ -33,23 +31,13 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   List<User> filteredUsers = [];
   bool isLoading = false;
   TextEditingController searchController = TextEditingController();
-  late WebSocketChannel _channel;
   final webSocketService = WebSocketService();
   final userservice = UserService();
 
   @override
   void initState() {
     super.initState();
-    //_channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
-
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
     _listenToWebSocket();
-
     fetchUsers();
   }
 
@@ -72,7 +60,6 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               role: role,
               connectedZoneId: zoneID,
             );
-
             addUser(newUser);
           }
         });
@@ -83,6 +70,9 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   }
 
   void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
     WebSocketService().addListener(_handleWebSocketMessage);
   }
 
@@ -95,21 +85,19 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   @override
   void dispose() {
-    //_channel.sink.close();
     searchController.dispose();
-     WebSocketService().removeListener(_handleWebSocketMessage);
+    WebSocketService().removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
   void broadcastUserList(List<User> users) {
     final userListJson = users.map((u) => u.toJson()).toList();
     final payload = {"type": "sync_users", "users": userListJson};
-    _channel.sink.add(jsonEncode(payload));
+    webSocketService.send(jsonEncode(payload));
   }
 
   Future<void> fetchUsers() async {
     setState(() => isLoading = true);
-
     print("🔄 Reloading users at ${DateTime.now()}");
     final fetchedUsers = await UserService().getAllUsers();
     print("📦 Users fetched: ${fetchedUsers.length}");
@@ -145,7 +133,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
 
   Future<void> blockUser(User user) async {
     final payload = {"type": "block", "id": user.nationalId, "role": user.role};
-    _channel.sink.add(jsonEncode(payload));
+    webSocketService.send(jsonEncode(payload));
     await UserService().blockUser(user.nationalId);
 
     ScaffoldMessenger.of(

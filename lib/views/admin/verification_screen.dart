@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 
 class VerificationScreen extends StatefulWidget {
   const VerificationScreen({super.key});
@@ -14,49 +13,54 @@ class VerificationScreen extends StatefulWidget {
 class _VerificationScreenState extends State<VerificationScreen> {
   final ValueNotifier<List<Map<String, dynamic>>> pendingResponders =
       ValueNotifier([]);
-  late WebSocketChannel channel;
+  final webSocketService = WebSocketService();
 
   @override
   void initState() {
     super.initState();
-    channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+    _listenToWebSocket();
+  }
 
-    channel.stream.listen((message) {
-      print("\ud83d\udce5 Received WebSocket: $message");
-      final data = jsonDecode(message);
+  void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+    WebSocketService().addListener(_handleWebSocketMessage);
+  }
 
-      if (data['type'] == 'license_text') {
-        final responder = {
-          'id': data['senderID'] ?? 'unknown',
-          'name': data['username'] ?? 'Responder',
-          'role': data['role'] ?? 'N/A',
-          'description': data['description'] ?? '',
-        };
+  void _handleWebSocketMessage(Map<String, dynamic> message) async {
+    final type = message['type'];
+    if (type == 'license_text') {
+      final responder = {
+        'id': message['senderID'] ?? 'unknown',
+        'name': message['username'] ?? 'Responder',
+        'role': message['role'] ?? 'N/A',
+        'description': message['description'] ?? '',
+      };
 
-        final currentList = List<Map<String, dynamic>>.from(
-          pendingResponders.value,
-        );
-        final isDuplicate = currentList.any((e) => e['id'] == responder['id']);
-        if (!isDuplicate) {
-          pendingResponders.value = [...currentList, responder];
-        }
+      final currentList = List<Map<String, dynamic>>.from(
+        pendingResponders.value,
+      );
+      final isDuplicate = currentList.any((e) => e['id'] == responder['id']);
+      if (!isDuplicate) {
+        pendingResponders.value = [...currentList, responder];
       }
-    });
+    }
   }
 
   @override
   void dispose() {
-    channel.sink.close();
+    webSocketService.removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
   void _approveUser(BuildContext context, Map<String, dynamic> user) {
-    final message = jsonEncode({
+    Map<String, dynamic> messageJson = {
       'type': 'verify',
       'id': user['id'],
       'status': 'approved',
-    });
-    channel.sink.add(message);
+    };
+    webSocketService.send(jsonEncode(messageJson));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -64,17 +68,16 @@ class _VerificationScreenState extends State<VerificationScreen> {
         backgroundColor: Colors.green,
       ),
     );
-
     pendingResponders.value = List.from(pendingResponders.value)..remove(user);
   }
 
   void _rejectUser(BuildContext context, Map<String, dynamic> user) {
-    final message = jsonEncode({
+    Map<String, dynamic> messageJson = {
       'type': 'verify',
       'id': user['id'],
       'status': 'rejected',
-    });
-    channel.sink.add(message);
+    };
+    webSocketService.send(jsonEncode(messageJson));
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -86,7 +89,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
     pendingResponders.value = List.from(pendingResponders.value)..remove(user);
   }
 
-  // ✅ This simulates a responder submission. You can use it in development/testing.
+  //Simulates a responder submission
   void _simulateTestResponder() {
     final demo = {
       'type': 'license_text',
@@ -111,7 +114,6 @@ class _VerificationScreenState extends State<VerificationScreen> {
         },
       ];
     }
-
     print("\ud83d\udd2a Simulated responder added: ${demo['username']}");
   }
 

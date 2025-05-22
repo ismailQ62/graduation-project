@@ -24,17 +24,9 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   final userservice = UserService();
   List<User> users = [];
   
-  
-
   @override
   void initState() {
     super.initState();
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
     _listenToWebSocket();
     _loadChannels();
   }
@@ -83,8 +75,10 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   }
 
   void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
     WebSocketService().addListener(_handleWebSocketMessage);
-    print("Listening to WebSocket messages...");
   }
 
   void addUser(User user) async {
@@ -99,25 +93,10 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   @override
   void dispose() {
-    //_channel.sink.close();
     //searchController.dispose();
      WebSocketService().removeListener(_handleWebSocketMessage);
     super.dispose();
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   Future<void> _loadChannels() async {
     final fetched = await _channelService.getAllChannels();
@@ -185,7 +164,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    //final Zone zone = ModalRoute.of(context)!.settings.arguments as Zone;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(

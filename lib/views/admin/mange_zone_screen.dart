@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
-import 'package:lorescue/services/database/user_service.dart';
-import 'package:lorescue/services/database/zone_service.dart'; // ZoneService for database operations
+import 'package:lorescue/services/database/zone_service.dart';
 import 'package:lorescue/models/zone_model.dart';
-import 'package:network_info_plus/network_info_plus.dart'; // Zone model for data representation
+import 'package:network_info_plus/network_info_plus.dart';
 
 class ManageZonesScreen extends StatefulWidget {
   const ManageZonesScreen({super.key});
@@ -27,14 +25,27 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
   final info = NetworkInfo();
   Zone _zone = Zone(id: '', name: 'Default Zone');
   String? _currentZoneId;
-
   Zone? _receiverZone;
   bool zoneReceived = false;
 
   @override
   void initState() {
     super.initState();
+    _listenToWebSocket();
+    _loadCurrentUser();
+    _loadInitialZone();
+    _startConnectivityCheck();
+    fetchZones();
+  }
 
+  void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+    WebSocketService().addListener(_handleWebSocketMessage);
+  }
+
+  Future<void> _loadCurrentUser() async {
     final user = AuthService.getCurrentUser();
     if (user != null) {
       setState(() {
@@ -43,18 +54,6 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
     } else {
       debugPrint("No current user found.");
     }
-    _loadInitialZone();
-
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
-    _listenToWebSocket();
-    _startConnectivityCheck();
-
-    fetchZones();
   }
 
   void _startConnectivityCheck() {
@@ -80,19 +79,19 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
           print("Error checking zones: $e");
           setState(() {});
         }
-      }else{
+      } else {
         print("Not connected to Lorescue network");
         for (var zone in zones) {
           setState(() {
             zone.status = 'Disconnected';
           });
           String zoneName = zone.name;
-              NotificationController.showNotification(
-                title: 'Zones Check',
-                body: '$zoneName disconnected',
-                sound: 'emergency_alert',
-                id: 2,
-              );
+          NotificationController.showNotification(
+            title: 'Zones Check',
+            body: '$zoneName disconnected',
+            sound: 'emergency_alert',
+            id: 2,
+          );
         }
       }
     });
@@ -120,7 +119,7 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
                   zone.longitude = longitude;
                   print('$zone is connected\n');
                 });
-              } 
+              }
             }
             print('Current Zone is connected');
           }
@@ -153,10 +152,6 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
     } catch (e) {
       print("Error handling WebSocket message: $e");
     }
-  }
-
-  void _listenToWebSocket() {
-    WebSocketService().addListener(_handleWebSocketMessage);
   }
 
   void _loadInitialZone() {

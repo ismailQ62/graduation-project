@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
@@ -22,17 +21,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _login() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // ✅ Use the new loginUserWithResult method to get detailed feedback
     final result = await _userService.loginUserWithResult(
       _nationalIdController.text,
       _passwordController.text,
     );
 
     if (result.user != null) {
-      // Set the current user national ID
-      AuthService.setCurrentUser(result.user!);
-      result.user!.connectedZone; // Demo for connected zone
+      AuthService.setCurrentUser(result.user!);       // Set the current user national ID
+      result.user!.connectedZone; 
 
       /*  ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -52,7 +48,6 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushNamed(context, AppRoutes.home);
       }
     } else {
-      // ✅ Show appropriate error message for invalid or blocked users
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.error ?? "Login failed."),

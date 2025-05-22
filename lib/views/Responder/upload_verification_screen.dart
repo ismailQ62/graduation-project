@@ -1,10 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:web_socket_channel/io.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
-import 'package:lorescue/routes.dart';
 
 class UploadVerificationScreen extends StatefulWidget {
   const UploadVerificationScreen({super.key});
@@ -18,20 +16,24 @@ class _UploadVerificationScreenState extends State<UploadVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _descController = TextEditingController();
   String? _selectedRole;
-  late IOWebSocketChannel _channel;
-
+  final webSocketService = WebSocketService();
   final List<String> _roles = ['Police', 'Fire', 'Paramedic'];
   bool _isSending = false;
 
   @override
   void initState() {
     super.initState();
-    _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+    checkWebSocket();
+  }
+
+  void checkWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
   }
 
   @override
   void dispose() {
-    _channel.sink.close();
     _descController.dispose();
     super.dispose();
   }
@@ -49,20 +51,12 @@ class _UploadVerificationScreenState extends State<UploadVerificationScreen> {
       "role": _selectedRole,
       "description": _descController.text.trim(),
     };
-
-    print("📤 Sending Credentials:");
-    print("👤 Name       : ${user.name}");
-    print("🆔 National ID: ${user.nationalId}");
-    print("🎓 Role       : $_selectedRole");
-    print("📝 Description: ${_descController.text.trim()}");
-
     try {
-      _channel.sink.add(jsonEncode(payload));
+      webSocketService.send(jsonEncode(payload));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Credentials sent to admin!")),
       );
     } catch (e) {
-      print("❌ Error sending WebSocket message: $e");
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text("Failed to send.")));

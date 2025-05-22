@@ -7,6 +7,7 @@ class User {
   String? _connectedZoneId;
   String? _createdAt;
   final bool _isBlocked;
+  String latestLocation = " ";
 
   User({
     int? id,

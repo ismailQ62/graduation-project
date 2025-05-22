@@ -48,6 +48,7 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         senderId TEXT NOT NULL,
+        senderName TEXT NOT NULL,
         receiverId TEXT NOT NULL DEFAULT '',
         content TEXT NOT NULL,
         timestamp TEXT NOT NULL,
@@ -89,8 +90,10 @@ class DatabaseService {
   }
 
   Future<void> insertMessage({
-    required String sender,
-    required String text,
+    required String senderId,
+    required String senderName,
+    required String receiverId,
+    required String content,
     required String timestamp,
     required String type,
     required String receiverZone,
@@ -98,14 +101,16 @@ class DatabaseService {
   }) async {
     final db = await database;
     await db.insert('messages', {
-      'senderId': sender,
-      'content': text,
+      'senderId': senderId,
+      'senderName': senderName,
+      'receiverId': receiverId,
+      'content': content,
       'timestamp': timestamp,
       'type': type,
       'zoneId': receiverZone,
       'channelId': channelId,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-    print('Message inserted: $sender, $text, $type, $receiverZone, $channelId');
+    print('Message inserted: $senderId, $content, $type, $receiverZone, $channelId');
   }
 
   Future<List<Map<String, dynamic>>> getMessages(String type) async {

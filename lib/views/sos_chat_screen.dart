@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
+import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
@@ -22,7 +23,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   final webSocketService = WebSocketService();
 
   List<Map<String, dynamic>> _messages = [];
-  Map<String, dynamic>? _currentUser;
+  final user = AuthService.getCurrentUser();
   final String _messageType = "SOS";
   String? _currentZoneId;
 
@@ -36,35 +37,36 @@ class _SosChatScreenState extends State<SosChatScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCurrentUser();
-    _loadMessages();
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
     _listenToWebSocket();
+    _currentZoneId = user?.connectedZone;
+    _loadMessages();
   }
 
   void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    } 
     WebSocketService().addListener(_handleWebSocketMessage);
   }
 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
       final msgType = decoded['type'] ?? '';
-      if (msgType == "SOS") {
+      if (msgType == "SOS" && user?.role == "Responder") {
         final senderId = decoded["senderID"] ?? "ESP32";
-        final content = decoded["content"] ?? decoded["text"] ?? "No content";
+        final senderName = decoded["username"] ?? "Unknown";
+        final content = decoded["content"] ?? "No content";
         final timestamp = DateTime.now().toIso8601String();
         final receiverZone = decoded["receiverZone"] ?? "unknown";
-        if (_currentUser!['nationalId'] == senderId) {
+        final location = decoded["location"] ?? "0, 0";
+        if(user?.nationalId == senderId) {
           return;
         }
         await _dbService.insertMessage(
-          sender: senderId,
-          text: content,
+          senderId: senderId,
+          senderName: senderName,
+          receiverId: " ",
+          content: content,
           timestamp: timestamp,
           type: msgType,
           channelId: 0,
@@ -73,13 +75,13 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
         setState(() {
           _messages.add({
-            'sender': senderId,
-            'username': decoded["username"] ?? "Unknown",
-            'text': content,
+            'senderId': senderId,
+            'senderName': senderName,
+            'content': content,
             'timestamp': timestamp,
             'type': msgType,
-            'receiverZoneId': receiverZone,
-            'gps': decoded["gps"] ?? "0, 0",
+            'receiverZone': receiverZone,
+            'location': location,
           });
         });
       NotificationController.showNotification(
@@ -94,43 +96,22 @@ class _SosChatScreenState extends State<SosChatScreen> {
     }
   }
 
-  Future<void> _loadCurrentUser() async {
-    final user = AuthService.getCurrentUser();
-    if (user != null) {
-      setState(() {
-        _currentUser = {'nationalId': user.nationalId, 'name': user.name};
-        _currentZoneId = user.connectedZone;
-      });
-    } else {
-      debugPrint("No current user found.");
-    }
-  }
-
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
-      _messageType,
-    );
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType,);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
   }
 
   void _sendMessage() async {
-    if (_controller.text.isNotEmpty && _currentUser != null) {
+    if (_controller.text.isNotEmpty && user != null) {
       String content = _controller.text.trim();
       DateTime now = DateTime.now();
-      String nationalId = _currentUser!['nationalId'];
-      String username = _currentUser!['name'];
-      String zoneId = _currentZoneId ?? "Zone_1"; // Default zone if not connected
+      String nationalId = user!.nationalId; 
+      String username = user!.name; 
+      String zoneId = _currentZoneId ?? "Zone_1"; 
       String receiverZone = _receiverZone?.name ?? "ALL";
 
-      /* List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
-        _messageType,
-      );
-      String channelId =
-          dbMessages.isNotEmpty
-              ? dbMessages.first['channelId'].toString()
-              : "1"; */
       var location = await _gpsService.getCurrentLocation();
       if (location == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,14 +132,16 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "channelID": "0",
         "zoneId": zoneId,
         "receiverZone": receiverZone,
-        "gps": "${location.latitude}, ${location.longitude}",
+        "location": "${location.latitude}, ${location.longitude}",
       };
 
       try {
         webSocketService.send(jsonEncode(messageJson));
         await _dbService.insertMessage(
-          sender: nationalId,
-          text: content,
+          senderId: nationalId,
+          senderName: username,
+          receiverId: " ",
+          content: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
           channelId: 0,
@@ -167,15 +150,16 @@ class _SosChatScreenState extends State<SosChatScreen> {
 
         setState(() {
           _messages.add({
-            'sender': nationalId,
-            'username': username,
-            'text': content,
+            'senderId': nationalId,
+            'senderName': username,
+            'content': content,
             'timestamp': now.toIso8601String(),
             'type': _messageType,
-            'receiverZoneId': receiverZone,
-            'gps': "${location?.latitude}, ${location?.longitude}",
+            'receiverZone': receiverZone,
+            'location': "${location?.latitude}, ${location?.longitude}",
           });
         });
+        user?.latestLocation = "${location.latitude}, ${location.longitude}";
         _controller.clear();
       } catch (e) {
         debugPrint('Error sending message: $e');
@@ -269,17 +253,15 @@ class _SosChatScreenState extends State<SosChatScreen> {
                   itemBuilder: (context, index) {
                     final message = _messages[index];
                     final senderId =
-                        message['sender'] ?? message['senderId'] ?? 'Unknown';
-                    final senderName =
-                        message['username'] ?? message['senderName'] ?? 'Unknown';
-                    final content =
-                        message['text'] ?? message['content'] ?? 'No content';
+                        message['senderId'] ?? 'Unknown';
+                    final senderName = message['senderName'] ?? 'Unknown';
+                    final content = message['content'] ?? 'No content';
                     final timestamp = message['timestamp'] ?? '';
-                    final gps = message['gps'] ?? '0, 0';
+                    final location = message['location'] ?? '0, 0';
 
                     return ListTile(
                       title: Text(
-                        'Sender: $senderName $senderId\nMessage: $content\nLocation: $gps',
+                        'Sender: $senderName $senderId\nMessage: $content\nLocation: $location',
                       ),
                       subtitle: Text('Sent at: $timestamp'),
                     );

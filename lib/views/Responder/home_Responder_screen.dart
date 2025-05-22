@@ -26,8 +26,7 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
   String buttonText = 'Connect to LoRescue Network';
   final webSocketService = WebSocketService();
   Map<String, dynamic>? _currentUser;
-  String? _currentZoneId;
-  bool _approvedHandled = false; // ✅ Track if approval was processed
+  bool _approvedHandled = false;
 
   Zone? _receiverZone;
   final List<Zone> _zones = [
@@ -51,22 +50,30 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
       debugPrint("No current user found.");
     }
     _loadInitialZone();
-
-    if (!webSocketService.isConnected) {
-      print('🔌 WebSocket not connected. Connecting...');
-      webSocketService.connect('ws://192.168.4.1:81');
-    } else {
-      print('✅ WebSocket already connected.');
-    }
     _listenToWebSocket();
-    _startConnectivityCheck();
+    connectivityCheck();
   }
 
-  void _startConnectivityCheck() {
+  void _listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+    WebSocketService().addListener(_handleWebSocketMessage);
+  }
+
+  void connectivityCheck() {
     _checkZoneNow();
     _connectivityTimer = Timer.periodic(Duration(seconds: 5), (timer) {
       _checkZoneNow();
     });
+  }
+
+  void openWifiSettings() {
+    final intent = AndroidIntent(
+      action: 'android.settings.WIFI_SETTINGS',
+      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
+    );
+    intent.launch();
   }
 
   Future<void> _checkZoneNow() async {
@@ -81,7 +88,6 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
           final request = jsonEncode({"type": "NetworkInfo"});
           WebSocketService().send(request);
         } catch (e) {
-          print("Error requesting zone info: $e");
           setState(() {
             buttonText = 'Failed to request zone info';
           });
@@ -104,18 +110,6 @@ class _HomeResponderScreenState extends State<HomeResponderScreen> {
         buttonText = 'Connected to Zone: ${_zone.id}';
       });
     }
-  }
-
-  void _listenToWebSocket() {
-    WebSocketService().addListener(_handleWebSocketMessage);
-  }
-
-  void openWifiSettings() {
-    final intent = AndroidIntent(
-      action: 'android.settings.WIFI_SETTINGS',
-      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-    );
-    intent.launch();
   }
 
   Widget _buildCategoryBox({

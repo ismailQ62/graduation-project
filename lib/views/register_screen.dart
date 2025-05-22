@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
@@ -26,10 +27,10 @@ class RegisterScreen extends StatefulWidget {
 }
 
 // Check if connected to Wi-Fi
-Future<bool> ConnectedToWifi() async {
+Future<bool> connectedToWifi() async {
   final info = NetworkInfo();
   final ssid = await info.getWifiName();
-  return ssid != null && ssid.isNotEmpty;
+  return ssid != null && ssid.contains("Lorescue");
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -44,19 +45,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   String? _selectedRole;
   final List<String> roles = ["Individual", "Admin", "Responder"];
-  final _channel = IOWebSocketChannel.connect('ws://192.168.4.1:81');
+  final webSocketService = WebSocketService();
+
+  @override
+  void initState() {
+    super.initState();
+    checkWebSocket();
+  }
+void checkWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+  }
 
   @override
   void dispose() {
-    _channel.sink.close();
     super.dispose();
   }
 
   void _register() async {
-    // Check Wi-Fi connection
-    bool isConnectedToWifi = await ConnectedToWifi();
+    bool isConnectedToWifi = await connectedToWifi();
     if (!isConnectedToWifi) {
-      // Show warning dialog if not connected
       showDialog(
         context: context,
         builder:
@@ -166,7 +175,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       "createdAt": now,
     };
 
-    _channel.sink.add(jsonEncode(accountData));
+    //_channel.sink.add(jsonEncode(accountData));
+    webSocketService.send(jsonEncode(accountData));
+
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
