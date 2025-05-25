@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/models/channel_model.dart';
@@ -23,7 +25,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   final webSocketService = WebSocketService();
   final userservice = UserService();
   List<User> users = [];
-  
+
   @override
   void initState() {
     super.initState();
@@ -33,16 +35,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
-
       print("handleWebSocketMessage: $decoded");
       final type = decoded['type'] ?? '';
-      final national_id = decoded['national_id'] ?? '';
+
+      //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
+
+      /* if (type == 'NewUser') {
+        final national_id = decoded['national_id'] ?? '';
       final name = decoded['name'] ?? '';
       final role = decoded['role'] ?? '';
       final zoneID = decoded['zoneID'] ?? '';
-      //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
-
-      if (type == 'NewUser') {
         setState(() {
           if (!users.any((z) => z.nationalId == national_id)) {
             final newUser = User(
@@ -66,8 +68,27 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           duration: const Duration(seconds: 2),
         ),);
             
-          }
+          
         });
+      }else*/
+      if (type == "GetUsers") {
+        String national_id = decoded['national_id'] ?? '';
+        String name = decoded['name'] ?? '';
+        print ("GetUsers: $decoded");
+        if (!users.any((z) => z.nationalId == national_id)) {
+          setState(() {
+            final newUser = User(
+              name: name,
+              nationalId: national_id,
+              password: " ",
+              role: " ",
+              connectedZoneId: " ",
+            );
+            users.add(newUser);
+            print("New user added: $name");
+            addUser(newUser);
+          });
+        }
       }
     } catch (e) {
       print("Error handling WebSocket message: $e");
@@ -94,7 +115,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   @override
   void dispose() {
     //searchController.dispose();
-     WebSocketService().removeListener(_handleWebSocketMessage);
+    WebSocketService().removeListener(_handleWebSocketMessage);
     super.dispose();
   }
 
@@ -253,8 +274,16 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,
-                                arguments: {'channel': channel, 'zone': widget.zone},
+                                arguments: {
+                                  'channel': channel,
+                                  'zone': widget.zone,
+                                },
                               );
+                              if (channel.id == 4) {
+                                webSocketService.send(
+                                  jsonEncode({'type': 'GetUsers'}),
+                                );
+                              }
                             },
                           );
                         },

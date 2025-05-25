@@ -55,7 +55,8 @@ class DatabaseService {
         isRead INTEGER NOT NULL DEFAULT 0,
         channelId INTEGER NOT NULL DEFAULT 1,
         zoneId TEXT NOT NULL DEFAULT '',
-        type TEXT NOT NULL
+        type TEXT NOT NULL,
+        receiverZone TEXT 
       )
     ''');
 
@@ -87,6 +88,10 @@ class DatabaseService {
     if (!existingIds.contains(3)) {
       await db.insert('channels', {'id': 3, 'name': 'News Channel'});
     }
+
+    if (!existingIds.contains(4)) {
+      await db.insert('channels', {'id': 4, 'name': 'Contacts'});
+    }
   }
 
   Future<void> insertMessage({
@@ -109,6 +114,7 @@ class DatabaseService {
       'type': type,
       'zoneId': receiverZone,
       'channelId': channelId,
+      'receiverZone': receiverZone,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
     print('Message inserted: $senderId, $content, $type, $receiverZone, $channelId');
   }
@@ -127,14 +133,22 @@ class DatabaseService {
     String type,
     int channelId,
     String zoneId,
+    String? receiverId,
   ) async {
-    final db = await database;
-    return await db.query(
-      'messages',
-      where: 'type = ? AND channelId = ? AND zoneId = ?',
-      whereArgs: [type, channelId, zoneId],
-      orderBy: 'timestamp ASC',
-    );
+      final db = await database;
+  final whereClause = receiverId != null
+      ? '(senderId = ? OR receiverId = ?) AND channelId = ? AND receiverZone = ? AND type = ?'
+      : 'channelId = ? AND receiverZone = ? AND type = ?';
+  final whereArgs = receiverId != null
+      ? [receiverId, receiverId, channelId, zoneId, type]
+      : [channelId, zoneId, type];
+
+  return await db.query(
+    'messages',
+    where: whereClause,
+    whereArgs: whereArgs,
+    orderBy: 'timestamp ASC',
+  );
   }
 
   Future<void> deleteOldMessages() async {

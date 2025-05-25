@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/database/user_service.dart';
 import 'package:lorescue/models/user_model.dart';
-
+ 
 class ManageUsersScreen extends StatefulWidget {
   const ManageUsersScreen({super.key});
-
+ 
   @override
   _ManageUsersScreenState createState() => _ManageUsersScreenState();
 }
-
+ 
 String formatDateWithTime(String? isoDate) {
   if (isoDate == null) return "Unknown";
   try {
@@ -25,7 +25,7 @@ String formatDateWithTime(String? isoDate) {
     return "Invalid Date";
   }
 }
-
+ 
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   List<User> users = [];
   List<User> filteredUsers = [];
@@ -33,14 +33,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
   TextEditingController searchController = TextEditingController();
   final webSocketService = WebSocketService();
   final userservice = UserService();
-
+ 
   @override
   void initState() {
     super.initState();
     _listenToWebSocket();
     fetchUsers();
   }
-
+ 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
       final type = decoded['type'] ?? '';
@@ -49,7 +49,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       final role = decoded['role'] ?? '';
       final zoneID = decoded['zoneID'] ?? '';
       //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
-
+ 
       if (type == 'NewUser') {
         setState(() {
           if (!users.any((z) => z.nationalId == national_id)) {
@@ -68,34 +68,34 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       print("Error handling WebSocket message: $e");
     }
   }
-
+ 
   void _listenToWebSocket() {
     if (!webSocketService.isConnected) {
       webSocketService.connect('ws://192.168.4.1:81');
     }
     WebSocketService().addListener(_handleWebSocketMessage);
   }
-
+ 
   void addUser(User user) async {
     await userservice.insertUser(user);
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text("New user added successfully!")));
   }
-
+ 
   @override
   void dispose() {
     searchController.dispose();
     WebSocketService().removeListener(_handleWebSocketMessage);
     super.dispose();
   }
-
+ 
   void broadcastUserList(List<User> users) {
     final userListJson = users.map((u) => u.toJson()).toList();
     final payload = {"type": "sync_users", "users": userListJson};
     webSocketService.send(jsonEncode(payload));
   }
-
+ 
   Future<void> fetchUsers() async {
     setState(() => isLoading = true);
     print("🔄 Reloading users at ${DateTime.now()}");
@@ -106,14 +106,14 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       users = fetchedUsers;
       filteredUsers = fetchedUsers;
     });
-
+ 
     broadcastUserList(fetchedUsers);
     print("📡 Users broadcasted to ESP.");
-
+ 
     await Future.delayed(const Duration(milliseconds: 500));
     setState(() => isLoading = false);
   }
-
+ 
   void searchUsers(String query) {
     final results =
         users.where((user) {
@@ -125,17 +125,17 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           );
           return nameMatch || roleMatch;
         }).toList();
-
+ 
     setState(() {
       filteredUsers = results;
     });
   }
-
+ 
   Future<void> blockUser(User user) async {
     final payload = {"type": "block", "id": user.nationalId, "role": user.role};
     webSocketService.send(jsonEncode(payload));
     await UserService().blockUser(user.nationalId);
-
+    
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text("${user.name} has been blocked.")));

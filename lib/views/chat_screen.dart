@@ -1,3 +1,4 @@
+//import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:web_socket_channel/io.dart';
@@ -7,6 +8,7 @@ import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/services/auth_service.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:lorescue/models/user_model.dart';
 
 class ChatScreen extends StatefulWidget {
   final Channel channel;
@@ -32,7 +34,8 @@ class _ChatScreenState extends State<ChatScreen> {
   Zone? _receiverZone;
   WebSocketChannel? channel;
   final webSocketService = WebSocketService();
-
+  List<User> _users = [];
+  User? _selectedUser;
   final List<Zone> _zones = [
     Zone(id: '1', name: "Zone_1"),
     Zone(id: '2', name: "Zone_2"),
@@ -47,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _zoneId = widget.zone.id;
     _currentZone = widget.zone;
     _loadCurrentUser();
+    _loadUsers();
     _loadMessageForChannel(_channelId, _zoneId);
   }
 
@@ -69,6 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _handleWebSocketMessage(Map<String, dynamic> message) async {
+    print("Received message: $message");
     final type = message['type'];
     if (type == 'Chat') {
       final senderId = message['senderID'] ?? "ESP32";
@@ -77,6 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final timestamp = DateTime.now().toIso8601String();
       final msgType = message['type'] ?? 'unknown';
       final receiverZone = message['receiverZone'] ?? 'unknown';
+      final receiverId = message['receiverId'] ?? '';
 
       if (_currentUser!['nationalId'] == senderId) {
         return;
@@ -85,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _dbService.insertMessage(
         senderId: senderId,
         senderName: senderName,
-        receiverId: '',
+        receiverId: receiverId,
         content: content,
         timestamp: timestamp,
         type: msgType,
@@ -102,6 +108,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'type': msgType,
           'channelId': _channelId,
           'receiverZone': receiverZone,
+          'receiverId': receiverId,
         });
         _loadMessageForChannel(_channelId, receiverZone);
       });
@@ -129,7 +136,7 @@ class _ChatScreenState extends State<ChatScreen> {
           await _dbService.insertMessage(
             senderId: senderId,
             senderName: senderName,
-            receiverId: '',
+            receiverId: _selectedUser?.nationalId ?? '',
             content: content,
             timestamp: timestamp,
             type: msgType,
@@ -146,6 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
               'type': msgType,
               'channelId': _channelId,
               'receiverZone': receiverZone,
+              'receiverId': _selectedUser?.nationalId ?? '',
             });
             _loadMessageForChannel(_channelId, receiverZone);
           });
@@ -193,13 +201,16 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _loadCurrentUser() async {
-    /* List<Map<String, dynamic>> users = await _dbService.getUsers();
+  Future<void> _loadUsers() async {
+    List<Map<String, dynamic>> users = await _dbService.getUsers();
     if (users.isNotEmpty) {
       setState(() {
-        _currentUser = users.first;
+        _users = users.map((user) => User.fromMap(user)).toList();
       });
-    } */
+    }
+  }
+
+  Future<void> _loadCurrentUser() async {
     final user = AuthService.getCurrentUser();
     if (user != null) {
       setState(() {
@@ -216,11 +227,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _loadMessageForChannel(int channelId, String zoneId) async {
     List<Map<String, dynamic>> dbMessages = await _dbService
-        .getMessagesForChannel(_messageType, channelId, zoneId);
+        .getMessagesForChannel(
+          _messageType,
+          channelId,
+          zoneId,
+          _selectedUser?.nationalId,
+        );
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
+      print(_messages);
       channelmessages = _messages;
     });
+    print("Loaded messages: $_messages");
   }
 
   void _sendMessage() async {
@@ -251,13 +269,14 @@ class _ChatScreenState extends State<ChatScreen> {
         "senderID": nationalId,
         "username": username,
         "date":
-            "\${now.year}-\${now.month.toString().padLeft(2, '0')}-\${now.day.toString().padLeft(2, '0')}",
+            "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}",
         "time":
-            "\${now.hour.toString().padLeft(2, '0')}:\${now.minute.toString().padLeft(2, '0')}:\${now.second.toString().padLeft(2, '0')}",
+            "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}",
         "content": content,
         "channelID": _channelId.toString(),
         "zoneId": zoneId,
         "receiverZone": receiverZone,
+        "receiverId": _selectedUser?.nationalId ?? '',
         "location": "32.1234,36.5678",
       };
 
@@ -266,7 +285,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await _dbService.insertMessage(
           senderId: nationalId,
           senderName: username,
-          receiverId: '',
+          receiverId: _selectedUser?.nationalId ?? '',
           content: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
@@ -283,6 +302,7 @@ class _ChatScreenState extends State<ChatScreen> {
             'type': _messageType,
             'channelId': _channelId,
             'receiverZone': receiverZone,
+            'receiverId': _selectedUser?.nationalId ?? '',
           });
         });
 
@@ -310,6 +330,25 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Row(
           children: [
             Expanded(child: Text(channel.name)),
+            if (channel.id == 4)
+              DropdownButton<User>(
+                hint: const Text("Select User"),
+                value: _selectedUser,
+                items:
+                    _users.map((User user) {
+                      return DropdownMenuItem<User>(
+                        value: user,
+                        child: Text(user.name + "_" + user.nationalId),
+                      );
+                    }).toList(),
+                onChanged: (User? newUser) {
+                  setState(() {
+                    _selectedUser = newUser;
+                  });
+                  _loadMessageForChannel(_channelId, _receiverZone!.name);
+                },
+              ),
+
             DropdownButton<Zone>(
               hint: const Text("Zone"),
               value: _receiverZone,
@@ -352,13 +391,17 @@ class _ChatScreenState extends State<ChatScreen> {
                 final senderId = message['senderId'] ?? 'Unknown';
                 final senderName = message['senderName'] ?? 'Unknown Sender';
                 final content = message['content'] ?? 'No content';
-                final timestamp = message['timestamp'];
+                final timestamp =
+                    message['timestamp'] ??
+                    (message['date'] != null && message['time'] != null
+                        ? "${message['date']} ${message['time']}"
+                        : null);
+                final timeFormatted = formatTimestamp(timestamp);
                 final receiverZoneId =
                     message['receiverZoneId'] ??
                     message['receiverZone'] ??
                     _zoneId;
                 final isMe = senderId == _currentUser?['nationalId'];
-                final timeFormatted = formatTimestamp(timestamp);
                 return Align(
                   alignment:
                       isMe ? Alignment.centerRight : Alignment.centerLeft,
