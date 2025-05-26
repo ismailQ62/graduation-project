@@ -31,7 +31,7 @@ Future<bool> connectedToWifi() async {
   final info = NetworkInfo();
   final ssid = await info.getWifiName();
   return ssid != null && ssid.isNotEmpty;
- // return ssid != null && ssid.contains("Lorescue");
+  // return ssid != null && ssid.contains("Lorescue");
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
@@ -53,7 +53,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.initState();
     checkWebSocket();
   }
-void checkWebSocket() {
+
+  void checkWebSocket() {
     if (!webSocketService.isConnected) {
       webSocketService.connect('ws://192.168.4.1:81');
     }
@@ -66,7 +67,7 @@ void checkWebSocket() {
 
   void _register() async {
     bool isConnectedToWifi = await connectedToWifi();
-    if (isConnectedToWifi) {
+    if (!isConnectedToWifi) {
       showDialog(
         context: context,
         builder:
@@ -178,7 +179,6 @@ void checkWebSocket() {
 
     //_channel.sink.add(jsonEncode(accountData));
     webSocketService.send(jsonEncode(accountData));
-
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(

@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:lorescue/services/database/database_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -35,6 +38,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   final DatabaseService _dbService = DatabaseService();
 
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +63,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
     selectedBloodType = widget.userData['bloodType'] ?? 'A+';
     selectedRole = widget.userData['role'] ?? 'Individual';
+
+    final credentialPath = widget.userData['credential'] as String?;
+    if (credentialPath != null && credentialPath.isNotEmpty) {
+      _profileImage = File(credentialPath);
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final appDir = await getApplicationDocumentsDirectory();
+      final savedImage = await File(
+        pickedFile.path,
+      ).copy('${appDir.path}/profile_${widget.userData['nationalId']}.png');
+      setState(() {
+        _profileImage = savedImage;
+      });
+    }
   }
 
   Future<void> _saveChanges() async {
@@ -74,12 +98,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           'bloodType': selectedBloodType,
           'role': selectedRole,
           'password': passwordController.text.trim(),
+          'credential': _profileImage?.path ?? '',
         },
         where: 'nationalId = ?',
         whereArgs: [nationalIdController.text.trim()],
       );
 
-      Navigator.pop(context, true);
+      Navigator.pop(
+        context,
+        _profileImage?.path ?? '',
+      ); // return path for profile screen update
     } catch (e) {
       print('Update error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -141,6 +169,37 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
+            Center(
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 60,
+                    backgroundColor: Colors.grey.shade300,
+                    child: ClipOval(
+                      child:
+                          _profileImage != null
+                              ? Image.file(
+                                _profileImage!,
+                                width: 120,
+                                height: 120,
+                                fit: BoxFit.cover,
+                              )
+                              : const Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Colors.grey,
+                              ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _pickImage,
+                    icon: const Icon(Icons.image),
+                    label: const Text("Choose Profile Picture"),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             _buildFieldCard('First Name', firstNameController),
             _buildFieldCard('Last Name', lastNameController),
             _buildFieldCard(
@@ -150,7 +209,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             _buildFieldCard('Phone Number', phoneController),
             _buildFieldCard('Address', addressController),
-            _buildFieldCard('Password', passwordController),
             _buildDropdownCard(
               'Blood Type',
               bloodTypes,

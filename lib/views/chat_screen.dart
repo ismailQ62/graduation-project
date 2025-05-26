@@ -29,7 +29,8 @@ class _ChatScreenState extends State<ChatScreen> {
   List<Map<String, dynamic>> _messages = [];
   List<Map<String, dynamic>> channelmessages = [];
   Map<String, dynamic>? _currentUser;
-  final String _messageType = "Chat";
+  // final String _messageType = "Chat";
+  late final String _messageType;
   Zone? _currentZone;
   Zone? _receiverZone;
   WebSocketChannel? channel;
@@ -49,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _channelId = widget.channel.id!;
     _zoneId = widget.zone.id;
     _currentZone = widget.zone;
+    _messageType = widget.channel.type.toLowerCase();
     _loadCurrentUser();
     _loadUsers();
     _loadMessageForChannel(_channelId, _zoneId);
@@ -327,56 +329,76 @@ class _ChatScreenState extends State<ChatScreen> {
     final channel = widget.channel;
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Expanded(child: Text(channel.name)),
-            if (channel.id == 4)
-              DropdownButton<User>(
-                hint: const Text("Select User"),
-                value: _selectedUser,
-                items:
-                    _users.map((User user) {
-                      return DropdownMenuItem<User>(
-                        value: user,
-                        child: Text(user.name + "_" + user.nationalId),
-                      );
-                    }).toList(),
-                onChanged: (User? newUser) {
-                  setState(() {
-                    _selectedUser = newUser;
-                  });
-                  _loadMessageForChannel(_channelId, _receiverZone!.name);
-                },
-              ),
-
-            DropdownButton<Zone>(
-              hint: const Text("Zone"),
-              value: _receiverZone,
-              items:
-                  _zones.map((Zone zone) {
-                    return DropdownMenuItem<Zone>(
-                      value: zone,
-                      child: Text(zone.name),
-                    );
-                  }).toList(),
-              onChanged: (Zone? newZone) {
-                if (newZone != null) {
-                  setState(() {
-                    _receiverZone = newZone;
-                  });
-                  _loadMessageForChannel(_channelId, _receiverZone!.name);
-                  //print("Selected zone: ${_receiverZone!.name} ${_receiverZone!.id}",);
-                } else {
-                  setState(() {
-                    _receiverZone = null;
-                  });
-                  _loadMessageForChannel(_channelId, _zoneId);
-                  //print("Selected zone: ${_currentZone!.name}");
-                }
-              },
-            ),
-          ],
-        ),
+        title:
+            widget.channel.id == 4
+                ? Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButton<User>(
+                        isExpanded: true,
+                        hint: const Text("Select User"),
+                        value: _selectedUser,
+                        items:
+                            _users.map((User user) {
+                              return DropdownMenuItem<User>(
+                                value: user,
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.person,
+                                      size: 16,
+                                      color: Colors.blueGrey,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        "${user.name}_${user.nationalId}",
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 14),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                        onChanged: (User? newUser) {
+                          setState(() => _selectedUser = newUser);
+                          _loadMessageForChannel(
+                            _channelId,
+                            _receiverZone?.name ?? _zoneId,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButton<Zone>(
+                        isExpanded: true,
+                        hint: const Text("Zone"),
+                        value: _receiverZone,
+                        items:
+                            _zones.map((Zone zone) {
+                              return DropdownMenuItem<Zone>(
+                                value: zone,
+                                child: Text(
+                                  zone.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                        onChanged: (Zone? newZone) {
+                          setState(() => _receiverZone = newZone);
+                          _loadMessageForChannel(
+                            _channelId,
+                            newZone?.name ?? _zoneId,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                )
+                : Text(widget.channel.name, overflow: TextOverflow.ellipsis),
       ),
       body: Column(
         children: [

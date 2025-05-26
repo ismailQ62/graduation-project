@@ -74,7 +74,7 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
       if (type == "GetUsers") {
         String national_id = decoded['national_id'] ?? '';
         String name = decoded['name'] ?? '';
-        print ("GetUsers: $decoded");
+        print("GetUsers: $decoded");
         if (!users.any((z) => z.nationalId == national_id)) {
           setState(() {
             final newUser = User(
@@ -123,65 +123,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
     final fetched = await _channelService.getAllChannels();
     setState(() => _channels = fetched);
   }
-
-  /* void _addChannel() {
-    showDialog(
-      context: context,
-      builder: (context) {
-        TextEditingController newChannelController = TextEditingController();
-        return AlertDialog(
-          title: const Text("Create New Channel"),
-          content: TextField(
-            controller: newChannelController,
-            decoration: const InputDecoration(hintText: "Enter channel name"),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final name = newChannelController.text.trim();
-                if (name.isNotEmpty) {
-                  await _channelService.createChannel(Channel(name: name));
-                  Navigator.pop(context);
-                  await _loadChannels();
-                }
-              },
-              child: const Text("Add"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDelete(Channel channel) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text("Delete Channel"),
-            content: Text("Are you sure you want to delete '${channel.name}'?"),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                onPressed: () async {
-                  await _channelService.deleteChannel(channel.id!);
-                  Navigator.pop(context);
-                  await _loadChannels();
-                },
-                child: const Text("Delete"),
-              ),
-            ],
-          ),
-    );
-  } */
 
   @override
   Widget build(BuildContext context) {
@@ -292,40 +233,6 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
           ],
         ),
       ),
-      /* bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Icon(Icons.home, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.verification);
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.chat, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.chat);
-              },
-            ),
-            SizedBox(width: 48.w),
-            IconButton(
-              icon: Icon(Icons.map, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.map);
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.person, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.profile);
-              },
-            ),
-          ],
-        ),
-      ), */
     );
   }
 }

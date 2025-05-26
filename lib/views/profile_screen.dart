@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lorescue/services/database/database_service.dart';
 import 'package:lorescue/services/auth_service.dart';
@@ -90,13 +91,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return const Scaffold(body: Center(child: Text('No user data found')));
     }
 
-    // Dynamically split full name into first and last
     final fullName = _userData!['name'] ?? '';
     final nameParts = fullName.split(' ');
     final firstName = nameParts.isNotEmpty ? nameParts[0] : 'N/A';
     final lastName =
         nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'N/A';
 
+    final imagePath = _userData!['credential'] as String?;
+    final imageKey = UniqueKey();
     return Scaffold(
       appBar: AppBar(title: const Text('Profile'), centerTitle: true),
       body: SingleChildScrollView(
@@ -108,7 +110,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Center(
               child: CircleAvatar(
                 radius: 60,
-                backgroundImage: AssetImage('assets/profile_picture.jpg'),
+                backgroundColor: Colors.grey.shade300,
+                child: ClipOval(
+                  child:
+                      imagePath != null &&
+                              imagePath.isNotEmpty &&
+                              File(imagePath).existsSync()
+                          ? Image.file(
+                            File(imagePath),
+                            key: imageKey, // 👈 force re-render
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                          )
+                          : const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -122,7 +142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 10),
-
             const SizedBox(height: 20),
             Column(
               children: [
@@ -192,7 +211,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 16),
                     ElevatedButton(
                       onPressed: () async {
-                        final updated = await Navigator.push(
+                        final updatedPath = await Navigator.push<String>(
                           context,
                           MaterialPageRoute(
                             builder:
@@ -200,8 +219,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     EditProfileScreen(userData: _userData!),
                           ),
                         );
-                        if (updated == true) {
-                          _loadUserData();
+
+                        if (updatedPath != null && updatedPath.isNotEmpty) {
+                          setState(() {
+                            _userData!['credential'] = updatedPath;
+                          });
                         }
                       },
                       child: const Text('Edit Profile'),

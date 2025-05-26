@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/models/channel_model.dart';
+import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/routes.dart';
+import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/database/channel_service.dart';
 
 class ManageChannelsScreen extends StatefulWidget {
@@ -14,12 +17,38 @@ class ManageChannelsScreen extends StatefulWidget {
 class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ChannelService _channelService = ChannelService();
+  final WebSocketService _webSocketService = WebSocketService();
+
   List<Channel> _channels = [];
 
   @override
   void initState() {
     super.initState();
     _loadChannels();
+    _webSocketService.addListener(_handleWebSocketMessage);
+  }
+
+  @override
+  void dispose() {
+    _webSocketService.removeListener(_handleWebSocketMessage);
+    super.dispose();
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
+    if (decoded['type'] == 'NewChannel') {
+      final name = decoded['name'];
+      final channelType = decoded['channelType'] ?? '';
+      final exists = _channels.any((c) => c.name == name);
+      if (!exists) {
+        await _channelService.createChannel(
+          Channel(name: name, type: channelType),
+        );
+        await _loadChannels();
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("📡 New channel added: $name")));
+      }
+    }
   }
 
   Future<void> _loadChannels() async {
@@ -32,11 +61,37 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
       context: context,
       builder: (context) {
         TextEditingController newChannelController = TextEditingController();
+        String? selectedType;
+        final List<String> types = ['main', 'chat', 'alert', 'news'];
+
         return AlertDialog(
           title: const Text("Create New Channel"),
-          content: TextField(
-            controller: newChannelController,
-            decoration: const InputDecoration(hintText: "Enter channel name"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: newChannelController,
+                decoration: const InputDecoration(
+                  hintText: "Enter channel name",
+                ),
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                decoration: const InputDecoration(labelText: "Select Type"),
+                value: selectedType,
+                items:
+                    types
+                        .map(
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(type.toUpperCase()),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (val) => selectedType = val,
+                validator: (val) => val == null ? 'Please select a type' : null,
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -46,8 +101,18 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
             ElevatedButton(
               onPressed: () async {
                 final name = newChannelController.text.trim();
-                if (name.isNotEmpty) {
-                  await _channelService.createChannel(Channel(name: name));
+                if (name.isNotEmpty && selectedType != null) {
+                  final newChannel = Channel(name: name, type: selectedType!);
+                  await _channelService.createChannel(newChannel);
+
+                  _webSocketService.send(
+                    jsonEncode({
+                      "type": "NewChannel",
+                      "name": name,
+                      "channelType": selectedType,
+                    }),
+                  );
+
                   Navigator.pop(context);
                   await _loadChannels();
                 }
@@ -113,16 +178,6 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
         padding: EdgeInsets.symmetric(horizontal: 16.w),
         child: Column(
           children: [
-            //To check if all channels are being fetched
-            ElevatedButton(
-              onPressed: () async {
-                final channels = await _channelService.getAllChannels();
-                for (var c in channels) {
-                  print(" CHANNEL: id=${c.id}, name=${c.name}");
-                }
-              },
-              child: const Text("Log All Channels"),
-            ),
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12.w),
               margin: EdgeInsets.only(bottom: 10.h),
@@ -148,8 +203,8 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
                         itemCount: _channels.length,
                         itemBuilder: (context, index) {
                           final channel = _channels[index];
-
                           final search = _searchController.text.toLowerCase();
+
                           if (search.isNotEmpty &&
                               !channel.name.toLowerCase().contains(search)) {
                             return const SizedBox.shrink();
@@ -169,6 +224,7 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            subtitle: Text("Type: ${channel.type}"),
                             trailing: IconButton(
                               icon: Icon(Icons.delete, color: Colors.red[300]),
                               onPressed: () => _confirmDelete(channel),
@@ -177,7 +233,10 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,
-                                arguments: channel.name,
+                                arguments: {
+                                  'channel': channel,
+                                  'zone': Zone(id: '1', name: 'Zone_1'),
+                                },
                               );
                             },
                           );
@@ -187,41 +246,6 @@ class _ManageChannelsScreenState extends State<ManageChannelsScreen> {
           ],
         ),
       ),
-
-      /*   bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        notchMargin: 8.0,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Icon(Icons.home, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.verification);
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.chat, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.chat);
-              },
-            ),
-            SizedBox(width: 48.w),
-            IconButton(
-              icon: Icon(Icons.map, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.map);
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.person, size: 28.sp),
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.profile);
-              },
-            ),
-          ],
-        ),
-      ), */
     );
   }
 }

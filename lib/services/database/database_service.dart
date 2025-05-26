@@ -20,6 +20,7 @@ class DatabaseService {
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         await db.execute("DROP TABLE IF EXISTS users");
+        await db.execute("DROP TABLE IF EXISTS channels");
         await _createTables(db);
       },
     );
@@ -63,9 +64,11 @@ class DatabaseService {
     await db.execute('''
       CREATE TABLE IF NOT EXISTS channels (
         id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL
+        name TEXT NOT NULL,
+        type TEXT NOT NULL
       )
     ''');
+
     await db.execute(''' 
       CREATE TABLE IF NOT EXISTS zones (
         id TEXT PRIMARY KEY,
@@ -80,17 +83,32 @@ class DatabaseService {
     final existingIds = existing.map((e) => e['id']).toList();
 
     if (!existingIds.contains(1)) {
-      await db.insert('channels', {'id': 1, 'name': 'Main Channel'});
+      await db.insert('channels', {
+        'id': 1,
+        'name': 'Main Channel',
+        'type': 'main',
+      });
     }
     if (!existingIds.contains(2)) {
-      await db.insert('channels', {'id': 2, 'name': 'Alert Channel'});
+      await db.insert('channels', {
+        'id': 2,
+        'name': 'Alert Channel',
+        'type': 'alert',
+      });
     }
     if (!existingIds.contains(3)) {
-      await db.insert('channels', {'id': 3, 'name': 'News Channel'});
+      await db.insert('channels', {
+        'id': 3,
+        'name': 'News Channel',
+        'type': 'news',
+      });
     }
-
     if (!existingIds.contains(4)) {
-      await db.insert('channels', {'id': 4, 'name': 'Contacts'});
+      await db.insert('channels', {
+        'id': 4,
+        'name': 'Contacts',
+        'type': 'chat',
+      });
     }
   }
 
@@ -116,7 +134,9 @@ class DatabaseService {
       'channelId': channelId,
       'receiverZone': receiverZone,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
-    print('Message inserted: $senderId, $content, $type, $receiverZone, $channelId');
+    print(
+      'Message inserted: $senderId, $content, $type, $receiverZone, $channelId',
+    );
   }
 
   Future<List<Map<String, dynamic>>> getMessages(String type) async {
@@ -135,20 +155,22 @@ class DatabaseService {
     String zoneId,
     String? receiverId,
   ) async {
-      final db = await database;
-  final whereClause = receiverId != null
-      ? '(senderId = ? OR receiverId = ?) AND channelId = ? AND receiverZone = ? AND type = ?'
-      : 'channelId = ? AND receiverZone = ? AND type = ?';
-  final whereArgs = receiverId != null
-      ? [receiverId, receiverId, channelId, zoneId, type]
-      : [channelId, zoneId, type];
+    final db = await database;
+    final whereClause =
+        receiverId != null
+            ? '(senderId = ? OR receiverId = ?) AND channelId = ? AND receiverZone = ? AND type = ?'
+            : 'channelId = ? AND receiverZone = ? AND type = ?';
+    final whereArgs =
+        receiverId != null
+            ? [receiverId, receiverId, channelId, zoneId, type]
+            : [channelId, zoneId, type];
 
-  return await db.query(
-    'messages',
-    where: whereClause,
-    whereArgs: whereArgs,
-    orderBy: 'timestamp ASC',
-  );
+    return await db.query(
+      'messages',
+      where: whereClause,
+      whereArgs: whereArgs,
+      orderBy: 'timestamp ASC',
+    );
   }
 
   Future<void> deleteOldMessages() async {
@@ -185,5 +207,19 @@ class DatabaseService {
   Future<void> deleteZone(String zoneId) async {
     final db = await database;
     await db.delete('zones', where: 'id = ?', whereArgs: [zoneId]);
+  }
+
+  Future<String?> getChannelType(int channelId) async {
+    final db = await database;
+    final result = await db.query(
+      'channels',
+      where: 'id = ?',
+      whereArgs: [channelId],
+      limit: 1,
+    );
+    if (result.isNotEmpty) {
+      return result.first['type'] as String;
+    }
+    return null;
   }
 }
