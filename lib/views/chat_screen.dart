@@ -330,7 +330,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         title:
-            widget.channel.id == 4
+            widget.channel.type == 'chat'
                 ? Row(
                   children: [
                     Expanded(
@@ -398,8 +398,47 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   ],
                 )
-                : Text(widget.channel.name, overflow: TextOverflow.ellipsis),
+                : Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.channel.name
+                            .replaceAll('Channel', '')
+                            .trim(), // ✅ Removes "Channel"
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: DropdownButton<Zone>(
+                        isExpanded: true,
+                        hint: const Text("Zone"),
+                        value: _receiverZone,
+                        items:
+                            _zones.map((Zone zone) {
+                              return DropdownMenuItem<Zone>(
+                                value: zone,
+                                child: Text(
+                                  zone.name,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                        onChanged: (Zone? newZone) {
+                          setState(() => _receiverZone = newZone);
+                          _loadMessageForChannel(
+                            _channelId,
+                            newZone?.name ?? _zoneId,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
       ),
+
       body: Column(
         children: [
           Padding(

@@ -45,7 +45,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   void _listenToWebSocket() {
     if (!webSocketService.isConnected) {
       webSocketService.connect('ws://192.168.4.1:81');
-    } 
+    }
     WebSocketService().addListener(_handleWebSocketMessage);
   }
 
@@ -59,7 +59,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         final timestamp = DateTime.now().toIso8601String();
         final receiverZone = decoded["receiverZone"] ?? "unknown";
         final location = decoded["location"] ?? "0, 0";
-        if(user?.nationalId == senderId) {
+        if (user?.nationalId == senderId) {
           return;
         }
         await _dbService.insertMessage(
@@ -84,12 +84,12 @@ class _SosChatScreenState extends State<SosChatScreen> {
             'location': location,
           });
         });
-      NotificationController.showNotification(
-        title: "🚨 SOS",
-        body: decoded["content"] ?? "SOS message received",
-        sound: "whoop_alert",
-        id: 2,
-      );
+        NotificationController.showNotification(
+          title: "🚨 SOS",
+          body: decoded["content"] ?? "SOS message received",
+          sound: "whoop_alert",
+          id: 2,
+        );
       }
     } catch (e) {
       print('Error handling WebSocket message: $e');
@@ -97,7 +97,9 @@ class _SosChatScreenState extends State<SosChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType,);
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
+      _messageType,
+    );
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
@@ -107,9 +109,9 @@ class _SosChatScreenState extends State<SosChatScreen> {
     if (_controller.text.isNotEmpty && user != null) {
       String content = _controller.text.trim();
       DateTime now = DateTime.now();
-      String nationalId = user!.nationalId; 
-      String username = user!.name; 
-      String zoneId = _currentZoneId ?? "Zone_1"; 
+      String nationalId = user!.nationalId;
+      String username = user!.name;
+      String zoneId = _currentZoneId ?? "Zone_1";
       String receiverZone = _receiverZone?.name ?? "ALL";
 
       var location = await _gpsService.getCurrentLocation();
@@ -220,93 +222,111 @@ class _SosChatScreenState extends State<SosChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("SOS Chat")),
-      body: Stack(
+      body: Column(
         children: [
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 4,
-                ),
-                child: DropdownButton<Zone>(
-                  hint: const Text("Select Zone"),
-                  value: _receiverZone,
-                  isExpanded: true,
-                  items:
-                      _zones.map((Zone zone) {
-                        return DropdownMenuItem<Zone>(
-                          value: zone,
-                          child: Text("Zone: ${zone.name}"),
-                        );
-                      }).toList(),
-                  onChanged: (Zone? newZone) {
-                    setState(() {
-                      _receiverZone = newZone!;
-                    });
-                  },
-                ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: _messages.length,
-                  itemBuilder: (context, index) {
-                    final message = _messages[index];
-                    final senderId =
-                        message['senderId'] ?? 'Unknown';
-                    final senderName = message['senderName'] ?? 'Unknown';
-                    final content = message['content'] ?? 'No content';
-                    final timestamp = message['timestamp'] ?? '';
-                    final location = message['location'] ?? '0, 0';
-
-                    return ListTile(
-                      title: Text(
-                        'Sender: $senderName $senderId\nMessage: $content\nLocation: $location',
-                      ),
-                      subtitle: Text('Sent at: $timestamp'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+            child: DropdownButton<Zone>(
+              hint: const Text("Select Zone"),
+              value: _receiverZone,
+              isExpanded: true,
+              items:
+                  _zones.map((Zone zone) {
+                    return DropdownMenuItem<Zone>(
+                      value: zone,
+                      child: Text("Zone: \${zone.name}"),
                     );
-                  },
-                ),
-              ),
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          decoration: const InputDecoration(
-                            labelText: "Type a message",
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: _sendMessage,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            bottom: 80,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: () {
-                _showSosDialog();
+                  }).toList(),
+              onChanged: (Zone? newZone) {
+                setState(() {
+                  _receiverZone = newZone!;
+                });
               },
-              backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Icon(Icons.warning_amber_rounded, size: 32),
             ),
           ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                final senderId = message['senderId'] ?? 'Unknown';
+                final senderName = message['senderName'] ?? 'Unknown';
+                final content = message['content'] ?? 'No content';
+                final timestamp = message['timestamp'] ?? '';
+                final location = message['location'] ?? '0, 0';
+                final isMe = senderId == user?.nationalId;
+
+                return Align(
+                  alignment:
+                      isMe ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isMe ? Colors.red[100] : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "\$senderName @ \$location:",
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(content),
+                        const SizedBox(height: 4),
+                        Text(
+                          formatTimestamp(timestamp),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    decoration: const InputDecoration(
+                      labelText: "Type a message",
+                      filled: true,
+                      fillColor: Color(0xFFFFEBEE),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Color(0xFFB71C1C)),
+                  onPressed: _sendMessage,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );
+  }
+
+  String formatTimestamp(dynamic timestamp) {
+    try {
+      final dt = DateTime.tryParse(timestamp.toString());
+      if (dt != null) {
+        return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}, ${dt.day}/${dt.month}/${dt.year}';
+      }
+    } catch (_) {}
+    return timestamp.toString();
   }
 }

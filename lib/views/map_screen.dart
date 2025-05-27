@@ -8,6 +8,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart' as geolocator;
+import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/services/database/database_service.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({super.key});
@@ -147,10 +149,34 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _userCurrentLocation() async {
     if (_currentLocation != null) {
       _mapController.move(_currentLocation!, 15);
+      await _saveCurrentLocationToUser(); // <--- Call here
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Current Location Not Available.")),
       );
+    }
+  }
+
+  Future<void> _saveCurrentLocationToUser() async {
+    final user = AuthService.getCurrentUser();
+    if (user != null && _currentLocation != null) {
+      final db = await DatabaseService().database;
+      await db.update(
+        'users',
+        {
+          'address':
+              '${_currentLocation!.latitude},${_currentLocation!.longitude}',
+        },
+        where: 'nationalId = ?',
+        whereArgs: [user.nationalId],
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Location saved successfully!")),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Unable to save location.")));
     }
   }
 

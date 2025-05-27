@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lorescue/views/Responder/upload_verification_screen.dart';
-import 'package:lorescue/views/admin/blocked_users_screen';
+import 'package:lorescue/views/admin/blocked_users_screen.dart';
+
 import 'package:lorescue/views/admin/home_admin_screen.dart';
 import 'package:lorescue/views/admin/manage_users_screen.dart';
 import 'package:lorescue/views/admin/mange_channel_screen.dart';
+import 'package:lorescue/views/admin/reports_screen.dart';
 import 'package:lorescue/views/admin/verification_screen.dart';
 import 'package:lorescue/views/splash_screen.dart';
 import 'package:lorescue/views/login_screen.dart';
@@ -35,6 +37,7 @@ class AppRoutes {
   static const String manageUsers = '/manageUsers';
   static const String uploadVerification = '/uploadVerification';
   static const blockedUsers = '/blockedUsers';
+  static const reports = '/reports';
 
   /// Slide transition builder
   static PageRouteBuilder _customPageRoute(Widget page) {
@@ -106,6 +109,8 @@ class AppRoutes {
         return _customPageRoute(const UploadVerificationScreen());
       case blockedUsers:
         return _customPageRoute(const BlockedUsersScreen());
+      case reports:
+        return _customPageRoute(const AdminReportsScreen());
       default:
         return _customPageRoute(
           const Scaffold(body: Center(child: Text("🚫 Page Not Found"))),

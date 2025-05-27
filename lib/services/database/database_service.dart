@@ -14,7 +14,7 @@ class DatabaseService {
     final path = join(dbPath, 'lorescue.db');
     return await openDatabase(
       path,
-      version: 8, // Incremented version
+      version: 9,
       onCreate: (db, version) async {
         await _createTables(db);
       },
@@ -213,6 +213,7 @@ class DatabaseService {
     final db = await database;
     final result = await db.query(
       'channels',
+      columns: ['type'],
       where: 'id = ?',
       whereArgs: [channelId],
       limit: 1,
@@ -221,5 +222,10 @@ class DatabaseService {
       return result.first['type'] as String;
     }
     return null;
+  }
+
+  Future<List<Map<String, Object?>>> getAllChannels() async {
+    final db = await database;
+    return await db.query('channels');
   }
 }

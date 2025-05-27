@@ -69,6 +69,13 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                           AppRoutes.blockedUsers,
                         ),
                   ),
+                  _buildCategoryBox(
+                    context,
+                    icon: Icons.report,
+                    label: "Reports",
+                    onTap:
+                        () => Navigator.pushNamed(context, AppRoutes.reports),
+                  ),
                 ],
               ),
             ),
