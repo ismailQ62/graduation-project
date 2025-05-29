@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/services/database/database_service.dart';
 import 'package:lorescue/services/database/zone_service.dart';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:network_info_plus/network_info_plus.dart';
@@ -25,8 +26,9 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
   final info = NetworkInfo();
   Zone _zone = Zone(id: '', name: 'Default Zone');
   String? _currentZoneId;
-  Zone? _receiverZone;
   bool zoneReceived = false;
+  Map<String, Timer> zoneTimers = {};
+  final DatabaseService _dbService = DatabaseService();
 
   @override
   void initState() {
@@ -34,8 +36,23 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
     _listenToWebSocket();
     _loadCurrentUser();
     _loadInitialZone();
+    fetchZones().then((_) {
+      sendZoneCheck();
+      printAllZonesFromDb();
+    });
     _startConnectivityCheck();
-    fetchZones();
+  }
+
+  Future<void> printAllZonesFromDb() async {
+    final List<Map<String, dynamic>> zones = await _dbService.getZones();
+
+    for (final zone in zones) {
+      print(
+        'ID: ${zone['id']}, Name: ${zone['name']}, '
+        'Lat: ${zone['latitude']}, Lng: ${zone['longitude']}, '
+        'Status: ${zone['status']}',
+      );
+    }
   }
 
   void _listenToWebSocket() {
@@ -56,44 +73,48 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
     }
   }
 
-  void _startConnectivityCheck() {
-    _connectivityTimer = Timer.periodic(Duration(seconds: 10), (timer) async {
-      String? ssid = await info.getWifiName();
-      if (ssid != null && ssid.contains("Lorescue")) {
-        try {
-          final request = jsonEncode({"type": "ZonesCheck"});
-          print("Checking zones...");
-          WebSocketService().send(request);
-          for (var zone in zones) {
-            if (zone.status == 'Disconnected') {
-              String zoneName = zone.name;
-              NotificationController.showNotification(
-                title: 'Zones Check',
-                body: '$zoneName disconnected',
-                sound: 'emergency_alert',
-                id: 2,
-              );
-            }
-          }
-        } catch (e) {
-          print("Error checking zones: $e");
-          setState(() {});
-        }
+  void sendZoneCheck() {
+    for (var zone in zones) {
+      if (zone.name == _currentZoneId) {
+        setState(() {
+          zone.status = 'Connected ✅';
+          zone.notifiedDisconnected = false;
+        });
+        zoneTimers[zone.name]?.cancel();
       } else {
-        print("Not connected to Lorescue network");
-        for (var zone in zones) {
-          setState(() {
-            zone.status = 'Disconnected';
-          });
-          String zoneName = zone.name;
+        setState(() {
+          zone.status = 'Disconnected ❌';
+        });
+        zoneTimers[zone.name]?.cancel();
+        resetZoneTimeout(zone.name);
+      }
+    }
+
+    Map<String, dynamic> message = {"type": "ZonesCheck"};
+    webSocketService.send(json.encode(message));
+  }
+
+  void resetZoneTimeout(String zoneName) {
+    zoneTimers[zoneName]?.cancel();
+    zoneTimers[zoneName] = Timer(Duration(seconds: 15), () {
+      // Check if the widget is still mounted before updating state
+      if (!mounted) {
+        return;
+      }
+      final zone = zones.firstWhere(
+        (z) => z.name.trim().toLowerCase() == zoneName.trim().toLowerCase(),
+      );
+      setState(() {
+        zone.status = 'Disconnected ❌';
+        if (zone.notifiedDisconnected == false) {
+          zone.notifiedDisconnected = true;
           NotificationController.showNotification(
-            title: 'Zones Check',
-            body: '$zoneName disconnected',
-            sound: 'emergency_alert',
-            id: 2,
+            title: 'Zone Disconnected',
+            body: 'Zone $zoneName has been disconnected.',
+            sound: 'default',
           );
         }
-      }
+      });
     });
   }
 
@@ -102,63 +123,81 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
       final type = decoded['type'] ?? '';
       final senderZone = decoded['senderZone'] ?? '';
       final receiverZone = decoded['receiverZone'] ?? '';
-      final latitude = decoded['lat'] ?? '';
-      final longitude = decoded['lng'] ?? '';
-      //_receiverZone = Zone.fromMap(decoded['receivedZone'] ?? {});
+      double latitude =
+          decoded['lat'] != null ? (decoded['lat'] as num).toDouble() : 0.0;
+      double longitude =
+          decoded['lng'] != null ? (decoded['lng'] as num).toDouble() : 0.0;
 
-      if (type == 'ZonesCheck') {
-        setState(() {
-          if (!zones.any((z) => z.name == senderZone)) {
-            addZone(senderZone);
-          } else {
-            for (var zone in zones) {
-              if (zone.name == senderZone) {
-                setState(() {
-                  zone.status = 'Connected ✅';
-                  zone.latitude = latitude;
-                  zone.longitude = longitude;
-                  print('$zone is connected\n');
-                });
-              }
-            }
-            print('Current Zone is connected');
-          }
-        });
-      } else if (type == 'ZoneAnnounce') {
-        if (_currentZoneId != null && _currentZoneId == senderZone) {
-          for (var zone in zones) {
-            if (zone.name == receiverZone) {
-              setState(() {
-                zone.status = 'Connected ✅';
-                print('$zone is connected\n');
-              });
-              break;
-            } else {
-              // Add new zone if it doesn't exist
-              if (!zones.any((z) => z.name == receiverZone)) {
-                addZone(receiverZone);
-                break;
-              } else if (zones.any((z) => z.name == receiverZone)) {
-                // If the one zone is not received, set it to disconnected
-                setState(() {
-                  zone.status = 'Disconnected ❌';
-                  print('$zone is disconnected\n');
-                });
-              }
-            }
-          }
+      if (type == 'ZonesCheck' || type == 'ZoneAnnounce') {
+        final zoneName = (type == 'ZonesCheck') ? senderZone : receiverZone;
+
+        if (zoneName.isEmpty) {
+          print("❌ Received $type with empty zone name");
+          return;
         }
+
+        Zone? zone = zones.firstWhere(
+          (z) => z.name.trim().toLowerCase() == zoneName.trim().toLowerCase(),
+          orElse: () {
+            final newZone = Zone(
+              id: zoneName,
+              name: zoneName,
+              status: 'Connected ✅',
+              latitude: latitude,
+              longitude: longitude,
+              notifiedDisconnected: false,
+            );
+            addZone(zoneName);
+            setState(() {
+              zones.add(newZone);
+            });
+            return newZone;
+          },
+        );
+
+        setState(() {
+          zone.status = 'Connected ✅';
+          zone.latitude = latitude;
+          zone.longitude = longitude;
+          zone.notifiedDisconnected = false;
+        });
+        resetZoneTimeout(zoneName);
       }
     } catch (e) {
       print("Error handling WebSocket message: $e");
     }
   }
 
+  bool isConnectedToLorescue = false;
+
+  void _startConnectivityCheck() {
+    _connectivityTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
+      String? ssid = await info.getWifiName();
+      bool currentlyConnected = (ssid != null && ssid.contains("Lorescue"));
+
+      if (currentlyConnected) {
+        if (!isConnectedToLorescue) {
+          isConnectedToLorescue = true;
+        }
+        sendZoneCheck();
+      } else {
+        if (isConnectedToLorescue) {
+          isConnectedToLorescue = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("You are disconnected from LoRescue network"),
+            ),
+          );
+        }
+      }
+    });
+  }
+
   void _loadInitialZone() {
     final user = AuthService.getCurrentUser();
     if (user != null && user.connectedZone != null) {
       setState(() {
-        _zone = Zone(id: user.connectedZone!, name: 'Auto-connected Zone');
+        _zone = Zone(id: user.connectedZone!, name: user.connectedZone!);
       });
     }
   }
@@ -170,6 +209,7 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
       zones = fetchedZones;
       filteredZones = fetchedZones;
     });
+    sendZoneCheck();
   }
 
   void searchZones(String query) {
@@ -195,11 +235,13 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
   void addZone(String zoneName) async {
     if (zoneName.isNotEmpty) {
       final newZone = Zone(id: zoneName, name: zoneName);
-      await ZoneService().addZone(newZone);
-      fetchZones();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("New zone added successfully!")));
+      bool flag = await ZoneService().addZone(newZone);
+      if (flag) {
+        fetchZones();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("New zone added successfully! $zoneName")),
+        );
+      }
     }
   }
 
@@ -208,6 +250,10 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
     searchController.dispose();
     WebSocketService().removeListener(_handleWebSocketMessage);
     _connectivityTimer?.cancel();
+    for (var timer in zoneTimers.values) {
+      timer.cancel();
+    }
+    zoneTimers.clear();
     super.dispose();
   }
 

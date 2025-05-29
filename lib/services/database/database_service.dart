@@ -75,7 +75,8 @@ class DatabaseService {
         name TEXT NOT NULL,
         status TEXT NOT NULL,
         latitude REAL NOT NULL,
-        longitude REAL NOT NULL
+        longitude REAL NOT NULL,
+        notifiedDisconnected boolean NOT NULL
       )
     ''');
 
