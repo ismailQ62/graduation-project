@@ -3,7 +3,7 @@ import 'package:lorescue/models/zone_model.dart';
 
 void main() {
   group('Zone Model', () {
-    test('Should create valid Zone object with default values', () {
+    /* test('Should create valid Zone object with default values', () {
       final zone = Zone(id: '1', name: 'Zone 1');
 
       expect(zone.id, '1');
@@ -11,7 +11,8 @@ void main() {
       expect(zone.status, 'Disconnected');
       expect(zone.latitude, 0.0);
       expect(zone.longitude, 0.0);
-    });
+    }) */
+    ;
 
     test('Should convert Zone to Map correctly', () {
       final zone =

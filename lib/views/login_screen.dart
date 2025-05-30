@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:lorescue/services/auth_service.dart';
+import 'package:lorescue/controllers/user_controller.dart';
 import 'package:lorescue/widgets/custom_text_field.dart';
 import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
-import 'package:lorescue/services/database/user_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,47 +13,18 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final UserService _userService = UserService();
+  final _viewModel = UserController();
   final TextEditingController _nationalIdController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
-  void _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    final result = await _userService.loginUserWithResult(
-      _nationalIdController.text,
-      _passwordController.text,
+  void _onLoginPressed() {
+    _viewModel.login(
+      context: context,
+      nationalId: _nationalIdController.text,
+      password: _passwordController.text,
+      formKey: _formKey,
     );
-
-    if (result.user != null) {
-      AuthService.setCurrentUser(result.user!);       // Set the current user national ID
-      result.user!.connectedZone; 
-
-      /*  ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Login successful! Welcome, ${user.name} Role: ${user.role} Zone: ${user.connectedZone}",
-          ),
-          backgroundColor: Colors.green,
-        ),
-      ); */
-
-      // Redirect based on role
-      if (result.user!.role == 'Admin') {
-        Navigator.pushNamed(context, AppRoutes.homeAdmin);
-      } else if (result.user!.role == 'Responder') {
-        Navigator.pushNamed(context, AppRoutes.homeResponder);
-      } else {
-        Navigator.pushNamed(context, AppRoutes.home);
-      }
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.error ?? "Login failed."),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   @override
@@ -68,7 +38,6 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Form(
             key: _formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 SizedBox(height: MediaQuery.of(context).size.height * 0.1),
                 Image.asset(
@@ -95,12 +64,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _nationalIdController,
                   isNumber: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return "National ID is required";
-                    }
-                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
-                      return "National ID must be exactly 10 digits";
-                    }
+                    if (!RegExp(r'^\d{10}$').hasMatch(value))
+                      return "Must be exactly 10 digits";
                     return null;
                   },
                 ),
@@ -110,21 +77,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passwordController,
                   isPassword: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
+                    if (value == null || value.isEmpty)
                       return "Password is required";
-                    }
-                    if (value.length < 8) {
-                      return "Password must be at least 8 characters";
-                    }
+                    if (value.length < 8)
+                      return "Must be at least 8 characters";
                     if (!RegExp(
                       r'(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#\$&*~%^])',
-                    ).hasMatch(value)) {
-                      return "Must include uppercase, lowercase & special character";
-                    }
+                    ).hasMatch(value))
+                      return "Include uppercase, lowercase & special character";
                     return null;
                   },
                 ),
-                SizedBox(height: 10.h),
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -136,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 SizedBox(height: 20.h),
-                CustomButton(text: "Login", onPressed: _login),
+                CustomButton(text: "Login", onPressed: _onLoginPressed),
                 SizedBox(height: 15.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
