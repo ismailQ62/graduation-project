@@ -6,9 +6,7 @@ import 'package:lorescue/widgets/custom_button.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/services/database/user_service.dart';
-
 import 'dart:convert';
-import 'package:web_socket_channel/io.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:crypto/crypto.dart'; // Hashing package
 
@@ -171,13 +169,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       "type": "register",
       "name": _usernameController.text,
       "national_id": _nationalIdController.text,
-      "password": hashedPassword,
       "role": _selectedRole,
       "connectedZoneId": "0",
       "createdAt": now,
     };
-
-    //_channel.sink.add(jsonEncode(accountData));
     webSocketService.send(jsonEncode(accountData));
 
     ScaffoldMessenger.of(context).showSnackBar(

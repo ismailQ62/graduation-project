@@ -120,6 +120,7 @@ class DatabaseService {
     required String content,
     required String timestamp,
     required String type,
+    required String zoneId,
     required String receiverZone,
     required int channelId,
   }) async {
@@ -131,7 +132,7 @@ class DatabaseService {
       'content': content,
       'timestamp': timestamp,
       'type': type,
-      'zoneId': receiverZone,
+      'zoneId': zoneId,
       'channelId': channelId,
       'receiverZone': receiverZone,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
@@ -149,8 +150,21 @@ class DatabaseService {
       orderBy: 'timestamp ASC',
     );
   }
-
   Future<List<Map<String, dynamic>>> getMessagesForChannel(
+    String type,
+    int channelId,
+    String zoneId,
+  ) async {
+    final db = await database;
+    return await db.query(
+      'messages',
+      where: 'type = ? AND channelId = ? AND zoneId = ?',
+      whereArgs: [type, channelId, zoneId],
+      orderBy: 'timestamp ASC',
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getMessagesForContacts(
     String type,
     int channelId,
     String zoneId,
@@ -173,6 +187,8 @@ class DatabaseService {
       orderBy: 'timestamp ASC',
     );
   }
+
+
 
   Future<void> deleteOldMessages() async {
     final db = await database;

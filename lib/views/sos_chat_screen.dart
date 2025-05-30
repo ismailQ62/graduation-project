@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
-import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/WebSocketService.dart';
 import 'package:lorescue/services/auth_service.dart';
@@ -39,20 +38,22 @@ class _SosChatScreenState extends State<SosChatScreen> {
     super.initState();
     _listenToWebSocket();
     _currentZoneId = user?.connectedZone;
-    _loadMessages();
+    //_loadMessages();
+    _loadMessageForChannel(0, _currentZoneId ?? "Zone_1");
   }
 
   void _listenToWebSocket() {
     if (!webSocketService.isConnected) {
       webSocketService.connect('ws://192.168.4.1:81');
     }
-    WebSocketService().addListener(_handleWebSocketMessage);
+    webSocketService.addListener(_handleWebSocketMessage);
   }
 
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
+      print("WebSocket message received: $decoded");
       final msgType = decoded['type'] ?? '';
-      if (msgType == "SOS" && user?.role == "Responder") {
+      if (msgType == "SOS") {
         final senderId = decoded["senderID"] ?? "ESP32";
         final senderName = decoded["username"] ?? "Unknown";
         final content = decoded["content"] ?? "No content";
@@ -69,6 +70,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           content: content,
           timestamp: timestamp,
           type: msgType,
+          zoneId: _currentZoneId ?? "Zone_1", //
           channelId: 0,
           receiverZone: receiverZone,
         );
@@ -80,6 +82,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
             'content': content,
             'timestamp': timestamp,
             'type': msgType,
+            'zoneId': _currentZoneId ?? "Zone_1",
             'receiverZone': receiverZone,
             'location': location,
           });
@@ -97,13 +100,22 @@ class _SosChatScreenState extends State<SosChatScreen> {
   }
 
   Future<void> _loadMessages() async {
-    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(
-      _messageType,
-    );
+    List<Map<String, dynamic>> dbMessages = await _dbService.getMessages(_messageType,);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
     });
   }
+ void _loadMessageForChannel(int channelId, String zoneId) async {
+    List<Map<String, dynamic>> dbMessages = await _dbService
+        .getMessagesForChannel(
+          _messageType,
+          channelId,
+          zoneId,
+        );
+    setState(() {
+      _messages = List<Map<String, dynamic>>.from(dbMessages);
+    });
+ }
 
   void _sendMessage() async {
     if (_controller.text.isNotEmpty && user != null) {
@@ -146,6 +158,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
           content: content,
           timestamp: now.toIso8601String(),
           type: _messageType,
+          zoneId: zoneId, //
           channelId: 0,
           receiverZone: receiverZone,
         );
@@ -222,7 +235,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("SOS Chat")),
-      body: Column(
+      body: Column( 
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
@@ -234,13 +247,14 @@ class _SosChatScreenState extends State<SosChatScreen> {
                   _zones.map((Zone zone) {
                     return DropdownMenuItem<Zone>(
                       value: zone,
-                      child: Text("Zone: \${zone.name}"),
+                      child: Text("Zone: ${zone.name}"), 
                     );
                   }).toList(),
               onChanged: (Zone? newZone) {
                 setState(() {
                   _receiverZone = newZone!;
                 });
+                _loadMessageForChannel( 0, newZone?.name ?? _currentZoneId ?? "Zone_1");
               },
             ),
           ),
@@ -273,7 +287,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "\$senderName @ \$location:",
+                          "$senderName @ $location:",
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         Text(content),

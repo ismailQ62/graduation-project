@@ -6,6 +6,7 @@ import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/WebSocketService.dart';
+import 'package:lorescue/services/auth_service.dart';
 import 'package:lorescue/services/database/channel_service.dart';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/services/database/user_service.dart';
@@ -25,14 +26,30 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
   final webSocketService = WebSocketService();
   final userservice = UserService();
   List<User> users = [];
+  Map<String, dynamic>? _currentUser;
 
   @override
   void initState() {
     super.initState();
     _listenToWebSocket();
     _loadChannels();
+    _loadCurrentUser();
   }
-
+  Future<void> _loadCurrentUser() async {
+    final user = AuthService.getCurrentUser();
+    if (user != null) {
+      setState(() {
+        _currentUser = {
+          'nationalId': user.nationalId,
+          'name': user.name,
+          'role': user.role,
+          'connectedZoneId': user.connectedZone,
+        };
+      });
+    } else {
+      debugPrint("No current user found.");
+    }
+  }
   void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
     try {
       print("handleWebSocketMessage: $decoded");
@@ -212,6 +229,12 @@ class _ChannelsScreenState extends State<ChannelsScreen> {
                               onPressed: () => _confirmDelete(channel),
                             ), */
                             onTap: () {
+                              if(_currentUser?['role'] == "Responder" && channel.id == 4){
+                                Navigator.pushNamed(
+                                context,
+                                AppRoutes.sosChat);
+                                return;
+                              }
                               Navigator.pushNamed(
                                 context,
                                 AppRoutes.chat,

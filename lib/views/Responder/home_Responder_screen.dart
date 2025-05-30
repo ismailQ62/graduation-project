@@ -6,7 +6,6 @@ import 'package:android_intent_plus/flag.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
-import 'package:lorescue/models/user_model.dart';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/services/WebSocketService.dart';
