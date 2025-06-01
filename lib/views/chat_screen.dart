@@ -81,6 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final content = message['content'] ?? 'No content';
       final timestamp = DateTime.now().toIso8601String();
       final msgType = message['type'] ?? 'unknown';
+      final zoneId = message['zoneId'] ?? _zoneId;
       final receiverZone = message['receiverZone'] ?? 'unknown';
       final receiverId = message['receiverId'] ?? '';
 
@@ -95,7 +96,7 @@ class _ChatScreenState extends State<ChatScreen> {
         content: content,
         timestamp: timestamp,
         type: msgType,
-        zoneId: _zoneId,
+        zoneId: zoneId,
         channelId: _channelId,
         receiverZone: receiverZone,
       );
@@ -108,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'timestamp': timestamp,
           'type': msgType,
           'channelId': _channelId,
-          'zoneId': _zoneId,
+          'zoneId': zoneId,
           'receiverZone': receiverZone,
           'receiverId': receiverId,
         });
@@ -385,7 +386,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 final timestamp = message['timestamp'] ?? (message['date'] != null && message['time'] != null? "${message['date']} ${message['time']}": null);
                 final timeFormatted = formatTimestamp(timestamp);
                 final receiverZoneId = message['receiverZoneId'] ?? message['receiverZone'] ?? _zoneId;
-                final userZone = _currentUser?['connectedZoneId'];
+                final userZone = message['zoneId'] ?? _zoneId;
                 final isMe = senderId == _currentUser?['nationalId'];
                 return Align(
                   alignment:

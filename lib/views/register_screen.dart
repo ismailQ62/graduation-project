@@ -25,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    final result = await _controller.register(context, _formKey);
+    final  result = await _controller.register(context, _formKey);
 
     if (result == "wifi_error") {
       showDialog(

@@ -104,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: RectangularField(
                           label: 'Last Name',
-                          value: lastName,
+                          value: lastName?? 'Enter your last name',
                         ),
                       ),
                     ],
@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   RectangularField(
                     label: 'Phone Number',
-                    value: userData['phoneNumber'] ?? 'N/A',
+                    value: userData['phoneNumber'] ?? 'Enter your phone number',
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -125,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Expanded(
                         child: RectangularField(
                           label: 'Blood Type',
-                          value: userData['bloodType'] ?? 'N/A',
+                          value: userData['bloodType'] ?? 'Enter your blood type',
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -140,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 20),
                   RectangularField(
                     label: 'Address',
-                    value: userData['address'] ?? 'N/A',
+                    value: userData['address'] ?? 'Enter your address',
                   ),
                   const SizedBox(height: 30),
                   Row(
