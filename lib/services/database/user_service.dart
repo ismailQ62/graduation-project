@@ -156,4 +156,14 @@ class UserService {
       whereArgs: [nationalId],
     );
   }
+
+  Future<List<User>> getUsersByRole(String role) async {
+    final db = await DatabaseService().database;
+    final result = await db.query(
+      'users',
+      where: 'role = ?',
+      whereArgs: [role],
+    );
+    return result.map((e) => User.fromMap(e)).toList();
+  }
 }

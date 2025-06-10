@@ -109,6 +109,7 @@ class AppRoutes {
         return _customPageRoute(const UploadVerificationScreen());
       case blockedUsers:
         return _customPageRoute(const BlockedUsersScreen());
+
       case reports:
         return _customPageRoute(const AdminReportsScreen());
       default:

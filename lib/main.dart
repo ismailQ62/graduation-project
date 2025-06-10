@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:lorescue/controllers/user_controller.dart';
 import 'package:lorescue/routes.dart';
 import 'package:lorescue/controllers/notification_controller.dart';
 import 'package:lorescue/services/WebSocketService.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +19,14 @@ void main() async {
     defaultValue: AppRoutes.splash,
   );
 
-  runApp(MainApp(initialRoute: route));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<UserController>(create: (_) => UserController()),
+      ],
+      child: MainApp(initialRoute: route),
+    ),
+  );
 }
 
 class MainApp extends StatelessWidget {
@@ -40,7 +49,7 @@ class MainApp extends StatelessWidget {
       },
     );
   }
-}
+} 
 
 // ✅ Function to delete the old database (run once)
 /* import 'package:flutter/material.dart';
@@ -94,4 +103,5 @@ Future<void> _deleteOldDatabase() async {
   final path = join(dbPath, 'lorescue.db');
   await deleteDatabase(path);
   print('✅ Database deleted: $path');
-} */
+}
+ */

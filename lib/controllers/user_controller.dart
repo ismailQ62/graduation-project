@@ -14,7 +14,6 @@ class UserController extends ChangeNotifier {
   final UserService _userService = UserService();
   final WebSocketService webSocketService = WebSocketService();
   final DatabaseService _dbService = DatabaseService();
-
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController nationalIdController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -23,7 +22,11 @@ class UserController extends ChangeNotifier {
   String? selectedRole;
   Map<String, dynamic>? _userData;
   bool _isLoading = true;
-
+  List<User> _users = [];
+  List<User> filteredUsers = [];
+  List<User> _blockedUsers = [];
+  List<User> get blockedUsers => _blockedUsers;
+  List<User> get users => _users;
   Map<String, dynamic>? get userData => _userData;
   bool get isLoading => _isLoading;
 
@@ -146,6 +149,10 @@ class UserController extends ChangeNotifier {
     final nationalId = nationalIdController.text;
     final exists = await _userService.doesNationalIdExist(nationalId);
     if (exists) return "duplicate_id";
+    if (selectedRole == "Admin") {
+      final admins = await _userService.getUsersByRole("Admin");
+      if (admins.isNotEmpty) return "admin_exists";
+    }
 
     final hashedPassword = hashPassword(passwordController.text);
     final now = DateTime.now().toIso8601String();
@@ -241,5 +248,130 @@ class UserController extends ChangeNotifier {
       _userData!['credential'] = path;
       notifyListeners();
     }
+  }
+
+  void _handleWebSocketMessage(Map<String, dynamic> decoded) async {
+    try {
+      final type = decoded['type'] ?? '';
+      final nationalId = decoded['national_id'] ?? '';
+      final name = decoded['name'] ?? '';
+      final role = decoded['role'] ?? '';
+      final zoneID = decoded['zoneID'] ?? '';
+
+      if (type == 'NewUser') {
+        final exists = _users.any((u) => u.nationalId == nationalId);
+        if (!exists) {
+          final newUser = User(
+            name: name,
+            nationalId: nationalId,
+            password: " ",
+            role: role,
+            connectedZoneId: zoneID,
+          );
+          await _userService.insertUser(newUser);
+          await fetchUsers();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error handling WebSocket message: $e");
+    }
+  }
+
+  Future<void> fetchUsers() async {
+    _isLoading = true;
+    notifyListeners();
+
+    final fetchedUsers = await _userService.getAllUsers();
+    _users = fetchedUsers;
+    filteredUsers = fetchedUsers;
+
+    _broadcastUserList(fetchedUsers);
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  void _broadcastUserList(List<User> users) {
+    final userListJson = users.map((u) => u.toJson()).toList();
+    final payload = {"type": "sync_users", "users": userListJson};
+    webSocketService.send(jsonEncode(payload));
+  }
+
+  void searchUsers(String query) {
+    final results =
+        _users.where((user) {
+          final nameMatch = user.name.toLowerCase().contains(
+            query.toLowerCase(),
+          );
+          final roleMatch = user.role.toLowerCase().contains(
+            query.toLowerCase(),
+          );
+          return nameMatch || roleMatch;
+        }).toList();
+
+    filteredUsers = results;
+    notifyListeners();
+  }
+
+  Future<void> blockUser(User user, BuildContext context) async {
+    final currentUser = AuthService.getCurrentUser();
+
+    if (currentUser?.nationalId == user.nationalId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You cannot block your own admin account."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final payload = {"type": "block", "id": user.nationalId, "role": user.role};
+    webSocketService.send(jsonEncode(payload));
+
+    await _userService.blockUser(user.nationalId);
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("${user.name} has been blocked.")));
+
+    await fetchUsers();
+  }
+
+  void listenToWebSocket() {
+    if (!webSocketService.isConnected) {
+      webSocketService.connect('ws://192.168.4.1:81');
+    }
+    webSocketService.addListener(_handleWebSocketMessage);
+  }
+
+  void removeWebSocketListener() {
+    webSocketService.removeListener(_handleWebSocketMessage);
+  }
+
+  Future<void> fetchBlockedUsers() async {
+    final allUsers = await _userService.getAllUsers();
+    _blockedUsers = allUsers.where((u) => u.isBlocked).toList();
+    notifyListeners();
+  }
+
+  Future<bool> unblockUser({
+    required User user,
+    required Future<bool> Function(User user) confirmUnblock,
+  }) async {
+    final confirmed = await confirmUnblock(user);
+    if (!confirmed) return false;
+
+    await _userService.unblockUser(user.nationalId);
+
+    final payload = {
+      "type": "unblock",
+      "id": user.nationalId,
+      "role": user.role,
+    };
+    webSocketService.send(jsonEncode(payload));
+
+    await fetchBlockedUsers();
+    return true;
   }
 }

@@ -31,7 +31,7 @@ class DatabaseService {
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        nationalId TEXT NOT NULL,
+        nationalId TEXT NOT NULL UNIQUE,
         phoneNumber TEXT,
         address TEXT,
         bloodType TEXT,
@@ -58,7 +58,7 @@ class DatabaseService {
         channelId INTEGER NOT NULL DEFAULT 1,
         zoneId TEXT NOT NULL DEFAULT '',
         type TEXT NOT NULL,
-        receiverZone TEXT 
+        receiverZone TEXT
       )
     ''');
 
@@ -70,48 +70,34 @@ class DatabaseService {
       )
     ''');
 
-    await db.execute(''' 
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS zones (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
         status TEXT NOT NULL,
         latitude REAL NOT NULL,
         longitude REAL NOT NULL,
-        notifiedDisconnected boolean NOT NULL
+        notifiedDisconnected INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
     final existing = await db.query('channels');
     final existingIds = existing.map((e) => e['id']).toList();
 
-    if (!existingIds.contains(1)) {
-      await db.insert('channels', {
-        'id': 1,
-        'name': 'Main Channel',
-        'type': 'main',
-      });
+    Future<void> insertChannelIfNotExist(
+      int id,
+      String name,
+      String type,
+    ) async {
+      if (!existingIds.contains(id)) {
+        await db.insert('channels', {'id': id, 'name': name, 'type': type});
+      }
     }
-    if (!existingIds.contains(2)) {
-      await db.insert('channels', {
-        'id': 2,
-        'name': 'Alert Channel',
-        'type': 'alert',
-      });
-    }
-    if (!existingIds.contains(3)) {
-      await db.insert('channels', {
-        'id': 3,
-        'name': 'News Channel',
-        'type': 'news',
-      });
-    }
-    if (!existingIds.contains(4)) {
-      await db.insert('channels', {
-        'id': 4,
-        'name': 'Contacts',
-        'type': 'chat',
-      });
-    }
+
+    await insertChannelIfNotExist(1, 'Main Channel', 'main');
+    await insertChannelIfNotExist(2, 'Alert Channel', 'alert');
+    await insertChannelIfNotExist(3, 'News Channel', 'news');
+    await insertChannelIfNotExist(4, 'Contacts', 'chat');
   }
 
   Future<void> insertMessage({
@@ -144,15 +130,10 @@ class DatabaseService {
 
   Future<int?> getLastInsertedMessageId() async {
     final db = await database;
-    final List<Map<String, dynamic>> result = await db.rawQuery(
+    final result = await db.rawQuery(
       'SELECT id FROM messages ORDER BY id DESC LIMIT 1',
     );
-
-    if (result.isNotEmpty) {
-      return result.first['id'] as int;
-    } else {
-      return null; // No message found
-    }
+    return result.isNotEmpty ? result.first['id'] as int : null;
   }
 
   Future<void> markMessageAsSent(int messageId) async {
@@ -214,7 +195,6 @@ class DatabaseService {
         receiverId != null
             ? [receiverId, receiverId, channelId, zoneId, type]
             : [channelId, zoneId, type];
-
     return await db.query(
       'messages',
       where: whereClause,
@@ -251,7 +231,14 @@ class DatabaseService {
 
   Future<void> addZone(String zoneId, String zoneName) async {
     final db = await database;
-    await db.insert('zones', {'id': zoneId, 'name': zoneName});
+    await db.insert('zones', {
+      'id': zoneId,
+      'name': zoneName,
+      'status': 'safe',
+      'latitude': 0.0,
+      'longitude': 0.0,
+      'notifiedDisconnected': 0,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteZone(String zoneId) async {
@@ -268,10 +255,7 @@ class DatabaseService {
       whereArgs: [channelId],
       limit: 1,
     );
-    if (result.isNotEmpty) {
-      return result.first['type'] as String;
-    }
-    return null;
+    return result.isNotEmpty ? result.first['type'] as String : null;
   }
 
   Future<List<Map<String, Object?>>> getAllChannels() async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:lorescue/routes.dart';
+
 import 'package:lorescue/views/admin/mange_zone_screen.dart';
 
 class HomeAdminScreen extends StatefulWidget {
@@ -76,6 +77,19 @@ class _HomeAdminScreenState extends State<HomeAdminScreen> {
                     onTap:
                         () => Navigator.pushNamed(context, AppRoutes.reports),
                   ),
+                  /*  _buildCategoryBox(
+                    context,
+                    icon: Icons.storage,
+                    label: "View Database",
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DatabaseViewerScreen(),
+                        ),
+                      );
+                    },
+                  ), */
                 ],
               ),
             ),
