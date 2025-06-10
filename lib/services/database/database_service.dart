@@ -53,7 +53,8 @@ class DatabaseService {
         receiverId TEXT NOT NULL DEFAULT '',
         content TEXT NOT NULL,
         timestamp TEXT NOT NULL,
-        isRead INTEGER NOT NULL DEFAULT 0,
+        isSent INTEGER DEFAULT 0,
+        isRead INTEGER DEFAULT 0,
         channelId INTEGER NOT NULL DEFAULT 1,
         zoneId TEXT NOT NULL DEFAULT '',
         type TEXT NOT NULL,
@@ -141,6 +142,39 @@ class DatabaseService {
     );
   }
 
+  Future<int?> getLastInsertedMessageId() async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.rawQuery(
+      'SELECT id FROM messages ORDER BY id DESC LIMIT 1',
+    );
+
+    if (result.isNotEmpty) {
+      return result.first['id'] as int;
+    } else {
+      return null; // No message found
+    }
+  }
+
+  Future<void> markMessageAsSent(int messageId) async {
+    final db = await database;
+    await db.update(
+      'messages',
+      {'isSent': 1},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
+  Future<void> markMessageAsRead(int messageId) async {
+    final db = await database;
+    await db.update(
+      'messages',
+      {'isRead': 1},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
+  }
+
   Future<List<Map<String, dynamic>>> getMessages(String type) async {
     final db = await database;
     return await db.query(
@@ -150,6 +184,7 @@ class DatabaseService {
       orderBy: 'timestamp ASC',
     );
   }
+
   Future<List<Map<String, dynamic>>> getMessagesForChannel(
     String type,
     int channelId,
@@ -187,8 +222,6 @@ class DatabaseService {
       orderBy: 'timestamp ASC',
     );
   }
-
-
 
   Future<void> deleteOldMessages() async {
     final db = await database;

@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'package:lorescue/models/zone_model.dart';
 import 'package:lorescue/models/channel_model.dart';
 import 'package:lorescue/services/auth_service.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:lorescue/models/user_model.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -58,7 +57,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!webSocketService.isConnected) {
       webSocketService.connect('ws://192.168.4.1:81');
     }
-    WebSocketService().addListener(_handleWebSocketMessage);
+    webSocketService.addListener(_handleWebSocketMessage);
   }
 
   Future<void> debugPrintAllMessages() async {
@@ -67,7 +66,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     print("=== All Messages in DB ===");
     for (final row in result) {
-      print("Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}",);
+      print(
+        "Message: ${row['content']}, ZoneID: ${row['zoneId']}, ChannelID: ${row['channelId']}",
+      );
     }
     print("===========================");
   }
@@ -75,7 +76,27 @@ class _ChatScreenState extends State<ChatScreen> {
   void _handleWebSocketMessage(Map<String, dynamic> message) async {
     print("Received message: $message");
     final type = message['type'];
+
+    if (type == 'read') {
+      final senderId = message['senderId'] ?? "ESP32";
+      if (_currentUser?['nationalId'] == senderId && message['messageId'] != null) {
+        await _dbService.markMessageAsRead(message['messageId']);
+        _loadMessageForChannel(_channelId, _zoneId);
+        setState(() {
+          _messages = _messages.map((msg) {
+            if (msg['messageId'] == message['messageId']) {
+              msg['isRead'] = 1; 
+            }
+            return msg;
+          }).toList();
+          channelmessages = List<Map<String, dynamic>>.from(_messages);
+        });
+      }
+      return;
+    }
+
     if (type == 'Chat') {
+      final messageId = message['messageId'] ?? 0;
       final senderId = message['senderID'] ?? "ESP32";
       final senderName = message['username'] ?? "Unknown Sender";
       final content = message['content'] ?? 'No content';
@@ -85,7 +106,18 @@ class _ChatScreenState extends State<ChatScreen> {
       final receiverZone = message['receiverZone'] ?? 'unknown';
       final receiverId = message['receiverId'] ?? '';
 
-      if (_currentUser!['nationalId'] == senderId) {
+      if (_currentUser!['nationalId'] == senderId &&
+          message['messageId'] != null) {
+        await _dbService.markMessageAsSent(message['messageId']);
+        setState(() {
+          _messages = _messages.map((msg) {
+            if (msg['messageId'] == message['messageId']) {
+              msg['isSent'] = 1; 
+            }
+            return msg;
+          }).toList();
+          channelmessages = List<Map<String, dynamic>>.from(_messages);
+        });
         return;
       }
 
@@ -100,7 +132,11 @@ class _ChatScreenState extends State<ChatScreen> {
         channelId: _channelId,
         receiverZone: receiverZone,
       );
-
+      int? lastId = await _dbService.getLastInsertedMessageId();
+      if (lastId != null) {
+        await _dbService.markMessageAsRead(lastId); 
+      } 
+      
       setState(() {
         _messages.add({
           'senderId': senderId,
@@ -112,10 +148,18 @@ class _ChatScreenState extends State<ChatScreen> {
           'zoneId': zoneId,
           'receiverZone': receiverZone,
           'receiverId': receiverId,
+          'isSent': 1,
+          'isRead': 1,
         });
         channelmessages = List<Map<String, dynamic>>.from(_messages);
       });
-        print("Updated messages: $channelmessages"); // doesn't reach here
+
+      Map<String, dynamic> messageJson = {
+        "type": "read",
+        "messageId": messageId,
+        "senderId": senderId,
+      };
+      webSocketService.send(jsonEncode(messageJson));
     }
   }
 
@@ -157,19 +201,16 @@ class _ChatScreenState extends State<ChatScreen> {
       channelmessages = _messages;
     });
   }
-   void _loadMessageForChannel(int channelId, String zoneId) async {
+
+  void _loadMessageForChannel(int channelId, String zoneId) async {
     List<Map<String, dynamic>> dbMessages = await _dbService
-        .getMessagesForChannel(
-          _messageType,
-          _channelId,
-          zoneId,
-        );
+        .getMessagesForChannel(_messageType, _channelId, zoneId);
     setState(() {
       _messages = List<Map<String, dynamic>>.from(dbMessages);
       channelmessages = _messages;
     });
     print("Loaded messages for channel $_channelId: $channelmessages");
-      }
+  }
 
   void _sendMessage() async {
     if (_controller.text.isNotEmpty && _currentUser != null) {
@@ -193,8 +234,42 @@ class _ChatScreenState extends State<ChatScreen> {
       String username = _currentUser!['name'];
       String zoneId = _zoneId;
       String receiverZone = _receiverZone?.name ?? _zoneId;
+      await _dbService.insertMessage(
+        senderId: nationalId,
+        senderName: username,
+        receiverId: _selectedUser?.nationalId ?? '',
+        content: content,
+        timestamp: now.toIso8601String(),
+        type: _messageType,
+        zoneId: _currentUser?['connectedZoneId'] ?? _zoneId,
+        channelId: _channelId,
+        receiverZone: receiverZone,
+      );
+      int? lastId = await _dbService.getLastInsertedMessageId();
+      if (lastId != null) {
+        print('Last inserted message ID: $lastId');
+      } else {
+        print('No messages found.');
+      }
+      setState(() {
+        _messages.add({
+          'senderId': nationalId,
+          'senderName': username,
+          'content': content,
+          'timestamp': now.toIso8601String(),
+          'type': _messageType,
+          'channelId': _channelId,
+          'zoneId': _currentUser?['connectedZoneId'] ?? _zoneId,
+          'receiverZone': receiverZone,
+          'receiverId': _selectedUser?.nationalId ?? '',
+          'isSent': 0,
+          'isRead': 0,
+        });
+        channelmessages = List<Map<String, dynamic>>.from(_messages);
+      });
 
       Map<String, dynamic> messageJson = {
+        "messageId": lastId ?? 0,
         "type": "Chat",
         "senderID": nationalId,
         "username": username,
@@ -208,37 +283,11 @@ class _ChatScreenState extends State<ChatScreen> {
         "receiverZone": receiverZone,
         "receiverId": _selectedUser?.nationalId ?? '',
         "location": "32.1234,36.5678",
+        "isRead": false,
       };
 
       try {
         webSocketService.send(jsonEncode(messageJson));
-        await _dbService.insertMessage(
-          senderId: nationalId,
-          senderName: username,
-          receiverId: _selectedUser?.nationalId ?? '',
-          content: content,
-          timestamp: now.toIso8601String(),
-          type: _messageType,
-          zoneId: _zoneId,
-          channelId: _channelId,
-          receiverZone: receiverZone,
-        );
-
-        setState(() {
-          _messages.add({
-            'senderId': nationalId,
-            'senderName': username,
-            'content': content,
-            'timestamp': now.toIso8601String(),
-            'type': _messageType,
-            'channelId': _channelId,
-            'zoneId': _zoneId,
-            'receiverZone': receiverZone,
-            'receiverId': _selectedUser?.nationalId ?? '',
-          });
-          channelmessages = List<Map<String, dynamic>>.from(_messages);
-        });
-
         _controller.clear();
       } catch (e) {
         debugPrint('Error sending message: \$e');
@@ -257,11 +306,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final channel = widget.channel;
     return Scaffold(
       appBar: AppBar(
         title:
-            widget.channel.id == 4 // Contacts Channel
+            widget.channel.id ==
+                    4 // Contacts Channel
                 ? Row(
                   children: [
                     Expanded(
@@ -283,7 +332,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                     const SizedBox(width: 6),
                                     Flexible(
                                       child: Text(
-                                        "${user.name}_${user.nationalId}",
+                                        "${user.name}",
                                         overflow: TextOverflow.ellipsis,
                                         style: const TextStyle(fontSize: 14),
                                       ),
@@ -383,10 +432,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 final senderId = message['senderId'] ?? 'Unknown';
                 final senderName = message['senderName'] ?? 'Unknown Sender';
                 final content = message['content'] ?? 'No content';
-                final timestamp = message['timestamp'] ?? (message['date'] != null && message['time'] != null? "${message['date']} ${message['time']}": null);
+                final timestamp =
+                    message['timestamp'] ??
+                    (message['date'] != null && message['time'] != null
+                        ? "${message['date']} ${message['time']}"
+                        : null);
                 final timeFormatted = formatTimestamp(timestamp);
-                final receiverZoneId = message['receiverZoneId'] ?? message['receiverZone'] ?? _zoneId;
+                final receiverZoneId =
+                    message['receiverZoneId'] ??
+                    message['receiverZone'] ??
+                    _zoneId;
                 final userZone = message['zoneId'] ?? _zoneId;
+                final isSent = message['isSent'] == 1;
+                final isRead = message['isRead'] == 1;
                 final isMe = senderId == _currentUser?['nationalId'];
                 return Align(
                   alignment:
@@ -410,12 +468,28 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         Text(content),
                         const SizedBox(height: 4),
-                        Text(
-                          timeFormatted,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              timeFormatted,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            if (isMe) ...[
+                              Icon(
+                                isRead
+                                    ? Icons.done_all
+                                    : isSent
+                                    ? Icons.check
+                                    : Icons.access_time,
+                                size: 16,
+                                color: isRead ? Colors.blue : Colors.grey,
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),

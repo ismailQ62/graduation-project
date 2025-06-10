@@ -9,17 +9,56 @@ import 'package:lorescue/services/database/zone_service.dart';
 import 'package:network_info_plus/network_info_plus.dart';
 import 'package:path/path.dart';
 
-class ZoneManagerService {
+class ZoneController extends ChangeNotifier {
   final WebSocketService _webSocketService = WebSocketService();
   final Map<String, Timer> _zoneTimers = {};
-  
+
   bool isConnectedToLorescue = false;
   late Timer _connectivityTimer;
   final info = NetworkInfo();
   final List<Zone> _zones = [];
   List<Zone> filteredZones = [];
   Function(List<Zone>)? onZonesUpdated;
-  List<Zone> get zones => _zones;
+  List<Zone> get zones => _zones; //
+  Map<String, dynamic>? _currentUser;
+  Zone _zone = Zone(id: '', name: 'Default Zone');
+
+  Future<void> init() async {
+    _listenToWebSocket();
+    _loadCurrentUser();
+    _loadInitialZone();
+    fetchZones();
+    sendZoneCheck();
+    _startConnectivityCheck();
+  }
+
+  @override
+  void dispose() {
+    _webSocketService.removeListener(
+      handleWebSocketMessage,
+    ); //WebSocketService() class call instead of _webSocketService
+    //_connectivityTimer?.cancel();
+    for (var timer in _zoneTimers.values) {
+      timer.cancel();
+    }
+    _zoneTimers.clear();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = AuthService.getCurrentUser();
+    if (user != null) {
+      _currentUser = {'nationalId': user.nationalId, 'name': user.name};
+    } else {
+      debugPrint("No current user found.");
+    }
+  }
+
+  void _loadInitialZone() {
+    final user = AuthService.getCurrentUser();
+    if (user != null && user.connectedZone != null) {
+      _zone = Zone(id: user.connectedZone!, name: user.connectedZone!);
+    }
+  }
 
   void _listenToWebSocket() {
     if (!_webSocketService.isConnected) {
@@ -28,22 +67,28 @@ class ZoneManagerService {
     _webSocketService.addListener(handleWebSocketMessage);
   }
 
-  void dispose() {
-    _webSocketService.removeListener(
-      handleWebSocketMessage,
-    ); //WebSocketService() class call instead of _webSocketService
-    for (var timer in _zoneTimers.values) {
-      timer.cancel();
-    }
-    _zoneTimers.clear();
-  }
-
   void sendZoneCheck() {
+    /* for (var zone in zones) {
+      if (zone.name == _currentZoneId) {
+        setState(() {
+          zone.status = 'Connected ✅';
+          zone.notifiedDisconnected = false;
+        });
+        zoneTimers[zone.name]?.cancel();
+      } else {
+        setState(() {
+          zone.status = 'Disconnected ❌';
+        });
+        zoneTimers[zone.name]?.cancel();
+        resetZoneTimeout(zone.name);
+      }
+    }
+    */
     final message = {"type": "ZonesCheck"};
     _webSocketService.send(json.encode(message));
   }
 
-void _startConnectivityCheck() {
+  void _startConnectivityCheck() {
     _connectivityTimer = Timer.periodic(Duration(seconds: 15), (timer) async {
       String? ssid = await info.getWifiName();
       bool currentlyConnected = (ssid != null && ssid.contains("Lorescue"));
@@ -74,7 +119,6 @@ void _startConnectivityCheck() {
         orElse: () => Zone(id: '', name: ''),
       );
       if (zone.name.isEmpty) return;
-
       zone.status = 'Disconnected ❌';
       if (!zone.notifiedDisconnected) {
         zone.notifiedDisconnected = true;
@@ -94,13 +138,15 @@ void _startConnectivityCheck() {
     final receiverZone = decoded['receiverZone'];
     final lat = decoded['lat']?.toDouble() ?? 0.0;
     final lng = decoded['lng']?.toDouble() ?? 0.0;
+    //double latitude = decoded['lat'] != null ? (decoded['lat'] as num).toDouble() : 0.0;
+    //double longitude = decoded['lng'] != null ? (decoded['lng'] as num).toDouble() : 0.0;
 
     if (type == 'ZonesCheck' || type == 'ZoneAnnounce') {
       final zoneName = (type == 'ZonesCheck') ? senderZone : receiverZone;
+
       final index = _zones.indexWhere(
         (z) => z.name.toLowerCase() == zoneName.toLowerCase(),
       );
-
       if (index == -1) {
         final newZone = Zone(
           id: zoneName,
