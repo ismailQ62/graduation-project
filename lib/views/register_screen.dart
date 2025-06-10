@@ -25,7 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _handleRegister() async {
-    final  result = await _controller.register(context, _formKey);
+    final result = await _controller.register(context, _formKey);
 
     if (result == "wifi_error") {
       showDialog(
@@ -46,6 +46,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showError("Passwords do not match");
     } else if (result == "duplicate_id") {
       _showError("National ID already exists");
+    } else if (result == "admin_exists") {
+      _showError("Only one Admin is allowed.");
     } else if (result == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -112,8 +114,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   isNumber: true,
                   validator: (value) {
                     if (value!.isEmpty) return "National ID is required";
-                    if (!RegExp(r'^\d{10}$').hasMatch(value))
+                    if (!RegExp(r'^\d{10}$').hasMatch(value)) {
                       return "Must be 10 digits";
+                    }
                     return null;
                   },
                 ),
@@ -151,12 +154,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   validator: (value) {
                     if (value!.isEmpty) return "Password is required";
                     if (value.length < 8) return "Min 8 characters";
-                    if (!RegExp(r'(?=.*[a-z])').hasMatch(value))
+                    if (!RegExp(r'(?=.*[a-z])').hasMatch(value)) {
                       return "Include lowercase";
-                    if (!RegExp(r'(?=.*[A-Z])').hasMatch(value))
+                    }
+                    if (!RegExp(r'(?=.*[A-Z])').hasMatch(value)) {
                       return "Include uppercase";
-                    if (!RegExp(r'(?=.*[!@#\$&*~%^])').hasMatch(value))
+                    }
+                    if (!RegExp(r'(?=.*[!@#\$&*~%^])').hasMatch(value)) {
                       return "Include special char";
+                    }
                     return null;
                   },
                 ),

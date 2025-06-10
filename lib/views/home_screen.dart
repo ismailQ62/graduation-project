@@ -194,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 FloatingActionButton(
+                  heroTag: 'zoom_in',
                   onPressed: _zoomIn,
                   mini: true,
                   backgroundColor: Colors.blue,
@@ -201,6 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 SizedBox(height: 10.h),
                 FloatingActionButton(
+                  heroTag: 'zoom_out',
                   onPressed: _zoomOut,
                   mini: true,
                   backgroundColor: Colors.blue,
@@ -266,6 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       // SOS Button
       floatingActionButton: FloatingActionButton(
+        heroTag: 'sos_button',
         onPressed: () {
           Navigator.pushNamed(context, AppRoutes.sosChat);
         },
