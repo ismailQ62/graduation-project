@@ -68,22 +68,6 @@ class ZoneController extends ChangeNotifier {
   }
 
   void sendZoneCheck() {
-    /* for (var zone in zones) {
-      if (zone.name == _currentZoneId) {
-        setState(() {
-          zone.status = 'Connected ✅';
-          zone.notifiedDisconnected = false;
-        });
-        zoneTimers[zone.name]?.cancel();
-      } else {
-        setState(() {
-          zone.status = 'Disconnected ❌';
-        });
-        zoneTimers[zone.name]?.cancel();
-        resetZoneTimeout(zone.name);
-      }
-    }
-    */
     final message = {"type": "ZonesCheck"};
     _webSocketService.send(json.encode(message));
   }
@@ -113,7 +97,7 @@ class ZoneController extends ChangeNotifier {
 
   void resetZoneTimeout(String zoneName) {
     _zoneTimers[zoneName]?.cancel();
-    _zoneTimers[zoneName] = Timer(Duration(seconds: 15), () {
+    _zoneTimers[zoneName] = Timer(Duration(seconds: 30), () {
       final zone = _zones.firstWhere(
         (z) => z.name == zoneName,
         orElse: () => Zone(id: '', name: ''),

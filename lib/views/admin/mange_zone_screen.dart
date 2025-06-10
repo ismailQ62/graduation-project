@@ -13,22 +13,18 @@ class ManageZonesScreen extends StatefulWidget {
 class _ManageZonesScreenState extends State<ManageZonesScreen> {
   TextEditingController searchController = TextEditingController();
   ZoneController zoneController = ZoneController();
-  List<Zone> zones = []; 
-  List<Zone> filteredZones = [];
+  List<Zone> zones = [];
 
   @override
   void initState() {
     super.initState();
+    zoneController.onZonesUpdated = (updatedZones) {
+      setState(() {
+        zones = updatedZones;
+      });
+    };
     zoneController.init();
   }
-  
-  Future<void> fetchZones() async {
-  await zoneController.fetchZones();
-  setState(() {
-    zoneController.onZonesUpdated!(zones);
-    zoneController.onZonesUpdated!(filteredZones);
-  });
-}
 
   @override
   void dispose() {
@@ -43,7 +39,12 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
       appBar: AppBar(
         title: const Text('Manage Zones'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: fetchZones),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await zoneController.fetchZones();
+            },
+          ),
         ],
       ),
       body: Column(
@@ -52,7 +53,9 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: searchController,
-              onChanged: zoneController.searchZones,
+              onChanged: (query) {
+                zoneController.searchZones(query);
+              },
               decoration: InputDecoration(
                 hintText: 'Search by name',
                 prefixIcon: const Icon(Icons.search),
@@ -64,12 +67,12 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
           ),
           Expanded(
             child:
-                filteredZones.isEmpty
+                zones.isEmpty
                     ? const Center(child: Text('No zones found.'))
                     : ListView.builder(
-                      itemCount: filteredZones.length,
+                      itemCount: zones.length,
                       itemBuilder: (context, index) {
-                        final zone = filteredZones[index];
+                        final zone = zones[index];
                         return Card(
                           margin: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -103,7 +106,9 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
                                           ElevatedButton(
                                             onPressed: () async {
                                               Navigator.pop(context);
-                                              await zoneController.deleteZone(zone.name);
+                                              await zoneController.deleteZone(
+                                                zone.name,
+                                              );
                                             },
                                             child: const Text('Delete'),
                                           ),
@@ -141,7 +146,7 @@ class _ManageZonesScreenState extends State<ManageZonesScreen> {
                           ElevatedButton(
                             onPressed: () async {
                               final zoneName = searchController.text.trim();
-                              if(zoneName.isNotEmpty) {
+                              if (zoneName.isNotEmpty) {
                                 await zoneController.addZone(zoneName);
                               }
                               Navigator.pop(context);
