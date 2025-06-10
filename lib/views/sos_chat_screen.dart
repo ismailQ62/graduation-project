@@ -20,7 +20,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
   final DatabaseService _dbService = DatabaseService();
   final GPSService _gpsService = GPSService();
   final webSocketService = WebSocketService();
-
+ 
   List<Map<String, dynamic>> _messages = [];
   final user = AuthService.getCurrentUser();
   final String _messageType = "SOS";
@@ -127,12 +127,18 @@ class _SosChatScreenState extends State<SosChatScreen> {
       String receiverZone = _receiverZone?.name ?? "ALL";
 
       var location = await _gpsService.getCurrentLocation();
-      if (location == null) {
+          String locationString;
+
+      if (location == null || (location.latitude == 0 && location.longitude == 0)) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Unable to fetch location.")),
         );
-        location = LatLng(0, 0);
-      }
+        final userData = await _dbService.getUserById(nationalId);
+          locationString = userData?['address'] ?? "0, 0";
+        
+        
+      }else{      locationString = "${location.latitude}, ${location.longitude}";
+}
 
       Map<String, dynamic> messageJson = {
         "type": _messageType,
@@ -146,7 +152,7 @@ class _SosChatScreenState extends State<SosChatScreen> {
         "channelID": "0",
         "zoneId": zoneId,
         "receiverZone": receiverZone,
-        "location": "${location.latitude}, ${location.longitude}",
+        "location": locationString,
       };
 
       try {
@@ -171,10 +177,10 @@ class _SosChatScreenState extends State<SosChatScreen> {
             'timestamp': now.toIso8601String(),
             'type': _messageType,
             'receiverZone': receiverZone,
-            'location': "${location?.latitude}, ${location?.longitude}",
+            'location': locationString,
           });
         });
-        user?.latestLocation = "${location.latitude}, ${location.longitude}";
+       // user?.latestLocation = "${location.latitude}, ${location.longitude}";
         _controller.clear();
       } catch (e) {
         debugPrint('Error sending message: $e');

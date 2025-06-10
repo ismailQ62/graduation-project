@@ -58,7 +58,8 @@ class DatabaseService {
         channelId INTEGER NOT NULL DEFAULT 1,
         zoneId TEXT NOT NULL DEFAULT '',
         type TEXT NOT NULL,
-        receiverZone TEXT 
+        receiverZone TEXT
+       
       )
     ''');
 
@@ -278,4 +279,13 @@ class DatabaseService {
     final db = await database;
     return await db.query('channels');
   }
+Future<Map<String, dynamic>?> getUserById(String id) async {
+  final db = await database;
+  final result = await db.query('users', where: 'nationalId = ?', whereArgs: [id]);
+  if (result.isNotEmpty) {
+    return result.first;
+  }
+  return null;
+}
+
 }
